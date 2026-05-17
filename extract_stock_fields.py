@@ -241,41 +241,20 @@ def parse_number(val: str) -> float | None:
     return float(m.group()) if m else None
 
 
-def parse_revenue_info(lines: list[str]) -> dict | None:
-    """从财务分析→主要财务指标 提取营业总收及同比增长率"""
-    idx = find_section(lines, "1.主要财务指标")
+def parse_customer_summary(lines: list[str]) -> dict | None:
+    """从经营分析→前5名客户营业收入表 提取截止日期和前5大客户销售汇总"""
+    idx = find_section(lines, "3.前5名客户营业收入表")
     if idx == -1:
         return None
-    section_lines = lines[idx:]
 
     result = {}
-
-    # 提取营业总收（最新一期 2026-03-31 对应第一个数据列）
-    for line in section_lines:
+    for line in lines[idx + 1:idx + 10]:
         stripped = line.strip()
-        if stripped.startswith("│") and "营业总收(未调整:万)" in stripped:
-            parts = [p.strip() for p in stripped.split("│")]
-            # parts[0]="", parts[1]="营业总收(未调整:万)", parts[2]=最新一期
-            if len(parts) > 2:
-                val_str = parts[2].replace(",", "").strip()
-                if val_str and val_str != "---":
-                    val_wan = float(val_str)
-                    if val_wan >= 10000:
-                        result["营业总收入"] = f"{val_wan / 10000:.2f}亿"
-                    else:
-                        result["营业总收入"] = f"{val_wan:.2f}万"
-                    result["营业总收入(万)"] = val_wan
-            break
-
-    # 提取总营收同比增长率
-    for line in section_lines:
-        stripped = line.strip()
-        if stripped.startswith("│") and "总营收同比增长率" in stripped:
-            parts = [p.strip() for p in stripped.split("│")]
-            if len(parts) > 2:
-                val_str = parts[2].strip()
-                if val_str and val_str != "---":
-                    result["总营收同比增长率(%)"] = float(val_str)
+        if stripped.startswith("截止日期:"):
+            result["截止日期"] = stripped.replace("截止日期:", "").strip()
+        elif stripped.startswith("前5大客户"):
+            result["前5大客户销售汇总"] = stripped
+        if "截止日期" in result and "前5大客户销售汇总" in result:
             break
 
     return result if result else None
@@ -308,9 +287,9 @@ def extract_fields(data: dict) -> dict:
     else:
         result["最新异动"] = "暂无数据"
 
-    # ── 3. 财务分析 → 营业收入 ──
-    fin = data.get("财务分析", {}).get("lines", [])
-    result["营业收入及占比"] = parse_revenue_info(fin)
+    # ── 3. 经营分析 → 前5名客户汇总 ──
+    biz = data.get("经营分析", {}).get("lines", [])
+    result["营业收入及占比"] = parse_customer_summary(biz)
 
     # ── 4. 热点题材 ──
     topics = data.get("热点题材", {}).get("lines", [])
@@ -324,9 +303,7 @@ def extract_fields(data: dict) -> dict:
     # 事件驱动
     result["事件驱动"] = parse_theme_events(topics, "3.事件驱动")
 
-    # ── 5. 经营分析 ──
-    biz = data.get("经营分析", {}).get("lines", [])
-
+    # ── 4. 经营分析（详细） ──
     # 主营构成分析（最新一期）
     result["主营构成分析"] = parse_biz_composition(biz)
 
