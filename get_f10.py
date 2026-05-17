@@ -60,7 +60,7 @@ for key, value in f10.items():
     }
 
 # 保存到文件
-output_file = Path(__file__).parent / "113678_f10.json"
+output_file = Path(__file__).parent / "convertible_bond" / "113678_f10.json"
 with open(output_file, "w", encoding="utf-8") as f:
     json.dump(result, f, ensure_ascii=False, indent=2)
 

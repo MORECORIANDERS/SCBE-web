@@ -206,7 +206,7 @@ def extract_fields(data: dict) -> dict:
 
 
 def main():
-    f10_path = Path(__file__).parent / "113678_f10.json"
+    f10_path = Path(__file__).parent / "convertible_bond" / "113678_f10.json"
     if not f10_path.exists():
         print(f"错误: 未找到 {f10_path}，请先运行 get_f10.py 获取数据", flush=True)
         return
@@ -215,7 +215,7 @@ def main():
     data = load_f10(f10_path)
     fields = extract_fields(data)
 
-    output_path = Path(__file__).parent / "113678_f10_summary.json"
+    output_path = Path(__file__).parent / "convertible_bond" / "113678_f10_summary.json"
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(fields, f, ensure_ascii=False, indent=2)
 
