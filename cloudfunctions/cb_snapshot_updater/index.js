@@ -128,8 +128,12 @@ async function insertSnapshot(conn, bond) {
   });
 }
 
-function sendFeishuNotification(count, tradeDate, tableName, successCount, errorCount, elapsed) {
+function sendFeishuNotification(count, tradeDate, tableName, successCount, errorCount, elapsed, sampleError) {
   return new Promise((resolve, reject) => {
+    let errorInfo = '';
+    if (errorCount > 0 && sampleError) {
+      errorInfo = `\n**失败原因**：${sampleError}`;
+    }
     const payload = JSON.stringify({
       msg_type: 'interactive',
       card: {
@@ -142,7 +146,7 @@ function sendFeishuNotification(count, tradeDate, tableName, successCount, error
             tag: 'div',
             text: {
               tag: 'lark_md',
-              content: `**触发时间**：${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}\n**交易日期**：${tradeDate}\n**获取数据**：${count} 条\n**成功写入**：${successCount} 条\n**失败数量**：${errorCount} 条\n**目标表**：${tableName}\n**执行耗时**：${elapsed} 秒`,
+              content: `**触发时间**：${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}\n**交易日期**：${tradeDate}\n**获取数据**：${count} 条\n**成功写入**：${successCount} 条\n**失败数量**：${errorCount} 条${errorInfo}\n**目标表**：${tableName}\n**执行耗时**：${elapsed} 秒`,
             },
           },
         ],
@@ -202,6 +206,7 @@ async function main() {
   const conn = getDbConnection();
   let successCount = 0;
   let errorCount = 0;
+  let sampleError = '';
   const tradeDate = bonds.length > 0 ? bonds[0].trade_date : new Date().toISOString().slice(0, 10);
 
   for (const bond of bonds) {
@@ -213,6 +218,7 @@ async function main() {
       }
     } catch (e) {
       errorCount++;
+      if (!sampleError) sampleError = e.message;
       console.error(`Insert error for ${bond.bond_code}: ${e.message}`);
     }
   }
@@ -223,7 +229,7 @@ async function main() {
   console.log(`[${new Date().toISOString()}] Done! Success: ${successCount}, Errors: ${errorCount}, Elapsed: ${elapsed}s`);
 
   try {
-    await sendFeishuNotification(bonds.length, tradeDate, 'bond_snapshot', successCount, errorCount, elapsed);
+    await sendFeishuNotification(bonds.length, tradeDate, 'bond_snapshot', successCount, errorCount, elapsed, sampleError);
   } catch (e) {
     console.error('Feishu notification error:', e.message);
   }
