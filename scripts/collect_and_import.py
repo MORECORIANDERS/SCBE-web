@@ -28,8 +28,9 @@ DO_IMPORT = True     # Phase 2: 写入 CloudBase MySQL
 # ============================================================
 # 配置
 # ============================================================
-CSV_PATH = "convertible_bond/all_convertible_bonds_sina_20260518.csv"
-OUTPUT_DIR = Path("convertible_bond/f10_cache")
+BASE_DIR = Path(__file__).resolve().parent.parent
+CSV_PATH = str(BASE_DIR / "convertible_bond" / "all_convertible_bonds_sina_20260518.csv")
+OUTPUT_DIR = BASE_DIR / "convertible_bond" / "f10_cache"
 BATCH_SIZE = 20          # 每批间隔数（避免 mootdx 请求过快）
 REQUEST_DELAY = 0.5      # 每批间隔秒数
 MOOTDX_SERVER = ('110.41.147.114', 7709)

@@ -2,12 +2,14 @@
 import os
 import time
 from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
 import requests
 
 # ── 配置 ──
-OUTPUT_DIR = "convertible_bond"
+BASE_DIR = Path(__file__).resolve().parent.parent
+OUTPUT_DIR = str(BASE_DIR / "convertible_bond")
 API_URL = "https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData"
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",

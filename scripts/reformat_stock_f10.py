@@ -24,7 +24,7 @@ def parse_updated_date(text: str) -> str:
 
 
 def main():
-    src = Path(__file__).parent / "underlying_stock" / "603220_f10.json"
+    src = Path(__file__).resolve().parent.parent / "underlying_stock" / "603220_f10.json"
     if not src.exists():
         print(f"错误: 未找到 {src}", flush=True)
         return

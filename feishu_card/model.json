@@ -1,0 +1,973 @@
+{
+    "body": {
+        "direction": "horizontal",
+        "elements": [
+            {
+                "content": "**DateTime：** 2026-05-16 06:55:06\n**DataTime：** 2026-05-15",
+                "element_id": "custom_id",
+                "margin": "0px",
+                "tag": "markdown",
+                "text_align": "left",
+                "text_size": "normal"
+            },
+            {
+                "element_id": "ALYs3Vd8yQ2EUlew9hCd",
+                "margin": "0px",
+                "tag": "hr"
+            },
+            {
+                "content": "## 市场概况",
+                "element_id": "eNpk5cYjBUCF48B9HRL8",
+                "icon": {
+                    "color": "blue",
+                    "tag": "standard_icon",
+                    "token": "ear_outlined"
+                },
+                "margin": "0px",
+                "tag": "markdown",
+                "text_align": "left",
+                "text_size": "normal"
+            },
+            {
+                "columns": [
+                    {
+                        "elements": [
+                            {
+                                "content": "**上涨：** <font color='green'>91</font>\n**下跌：** <font color='red'>239</font>\n**平盘：** 0",
+                                "element_id": "VQSF8TbVAOpJQLXfpgIf",
+                                "icon": {
+                                    "color": "blue",
+                                    "tag": "standard_icon",
+                                    "token": "platform_outlined"
+                                },
+                                "tag": "markdown",
+                                "text_align": "left",
+                                "text_size": "normal"
+                            }
+                        ],
+                        "horizontal_align": "left",
+                        "tag": "column",
+                        "vertical_align": "top",
+                        "vertical_spacing": "8px",
+                        "weight": 1,
+                        "width": "weighted"
+                    },
+                    {
+                        "elements": [
+                            {
+                                "content": "**总成交额：** 962.05\n**涨幅前十：** 249.68(26.0%)\n**涨幅前二十：** 314.42(32.7%)",
+                                "element_id": "fk9yAQYa6Z3Hw5MgrRxb",
+                                "icon": {
+                                    "color": "blue",
+                                    "tag": "standard_icon",
+                                    "token": "day_outlined"
+                                },
+                                "tag": "markdown",
+                                "text_align": "left",
+                                "text_size": "normal"
+                            }
+                        ],
+                        "horizontal_align": "left",
+                        "tag": "column",
+                        "vertical_align": "top",
+                        "vertical_spacing": "8px",
+                        "weight": 1,
+                        "width": "weighted"
+                    },
+                    {
+                        "elements": [
+                            {
+                                "content": "**价格中位数：** <font color='blue'>138.015</font>\n**涨幅中位数：** <font color='red'>-0.47%</font>\n**成交额中位数：** 0.93",
+                                "element_id": "y12H1uX3ZFk2qMCkE_T_",
+                                "icon": {
+                                    "color": "red",
+                                    "tag": "standard_icon",
+                                    "token": "pen_outlined"
+                                },
+                                "tag": "markdown",
+                                "text_align": "left",
+                                "text_size": "normal"
+                            }
+                        ],
+                        "horizontal_align": "left",
+                        "tag": "column",
+                        "vertical_align": "top",
+                        "vertical_spacing": "8px",
+                        "weight": 1,
+                        "width": "weighted"
+                    }
+                ],
+                "element_id": "CiO2emkA8oYfOBUAF0JB",
+                "flex_mode": "stretch",
+                "horizontal_align": "left",
+                "horizontal_spacing": "12px",
+                "margin": "0px",
+                "tag": "column_set"
+            },
+            {
+                "element_id": "pQRLmoaFsiMcXyG2B8oO",
+                "margin": "0px",
+                "tag": "hr"
+            },
+            {
+                "content": "## 价格分布统计",
+                "element_id": "j7oi9HeHQ0IiRz5WW06m",
+                "icon": {
+                    "color": "blue",
+                    "tag": "standard_icon",
+                    "token": "virtual-office_outlined"
+                },
+                "margin": "0px",
+                "tag": "markdown",
+                "text_align": "left",
+                "text_size": "normal"
+            },
+            {
+                "columns": [
+                    {
+                        "data_type": "text",
+                        "display_name": "价格区间",
+                        "horizontal_align": "center",
+                        "name": "price_range",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "number",
+                        "display_name": "数量",
+                        "format": {},
+                        "horizontal_align": "center",
+                        "name": "count",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "number",
+                        "display_name": "上涨",
+                        "format": {},
+                        "horizontal_align": "center",
+                        "name": "up",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "number",
+                        "display_name": "下跌",
+                        "format": {},
+                        "horizontal_align": "center",
+                        "name": "down",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "lark_md",
+                        "display_name": "涨幅中位数",
+                        "horizontal_align": "center",
+                        "name": "change",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "lark_md",
+                        "display_name": "成交额(亿)",
+                        "horizontal_align": "center",
+                        "name": "volume",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "lark_md",
+                        "display_name": "成交额中位数(亿)",
+                        "horizontal_align": "center",
+                        "name": "volume_med",
+                        "width": "80px"
+                    }
+                ],
+                "element_id": "wJ_4wgxVRKbp53hlfyQV",
+                "freeze_first_column": true,
+                "header_style": {
+                    "background_style": "grey",
+                    "bold": true,
+                    "text_align": "center"
+                },
+                "margin": "0px",
+                "page_size": 5,
+                "rows": [
+                    {
+                        "change": "<font color='red'>-1.64%</font>",
+                        "count": 5,
+                        "down": 5,
+                        "price_range": "<100",
+                        "up": 0,
+                        "volume": "10.68",
+                        "volume_med": "1.69"
+                    },
+                    {
+                        "change": "0.02%",
+                        "count": 7,
+                        "down": 2,
+                        "price_range": "100-110",
+                        "up": 5,
+                        "volume": "7.21",
+                        "volume_med": "1.02"
+                    },
+                    {
+                        "change": "<font color='red'>-0.29%</font>",
+                        "count": 21,
+                        "down": 14,
+                        "price_range": "110-120",
+                        "up": 7,
+                        "volume": "30.05",
+                        "volume_med": "0.68"
+                    },
+                    {
+                        "change": "<font color='red'>-0.52%</font>",
+                        "count": 64,
+                        "down": 57,
+                        "price_range": "120-130",
+                        "up": 7,
+                        "volume": "47.25",
+                        "volume_med": "0.45"
+                    },
+                    {
+                        "change": "<font color='red'>-0.33%</font>",
+                        "count": 82,
+                        "down": 63,
+                        "price_range": "130-140",
+                        "up": 19,
+                        "volume": "94.69",
+                        "volume_med": "0.59"
+                    },
+                    {
+                        "change": "<font color='red'>-0.06%</font>",
+                        "count": 48,
+                        "down": 27,
+                        "price_range": "140-150",
+                        "up": 21,
+                        "volume": "77.11",
+                        "volume_med": "0.86"
+                    },
+                    {
+                        "change": "<font color='red'>-0.67%</font>",
+                        "count": 23,
+                        "down": 16,
+                        "price_range": "150-160",
+                        "up": 7,
+                        "volume": "66.78",
+                        "volume_med": "0.93"
+                    },
+                    {
+                        "change": "<font color='red'>-1.18%</font>",
+                        "count": 37,
+                        "down": 29,
+                        "price_range": "160-200",
+                        "up": 8,
+                        "volume": "243.94",
+                        "volume_med": "3.18"
+                    },
+                    {
+                        "change": "<font color='red'>-1.02%</font>",
+                        "count": 43,
+                        "down": 26,
+                        "price_range": "200+",
+                        "up": 17,
+                        "volume": "384.33",
+                        "volume_med": "5.68"
+                    }
+                ],
+                "tag": "table"
+            },
+            {
+                "element_id": "zyDUUWej7HE4A_Sw_1Pf",
+                "margin": "0px",
+                "tag": "hr"
+            },
+            {
+                "content": "## 行业分布统计",
+                "element_id": "KZSjdleqmWCl7FMNKBsX",
+                "icon": {
+                    "color": "blue",
+                    "tag": "standard_icon",
+                    "token": "start_outlined"
+                },
+                "margin": "0px",
+                "tag": "markdown",
+                "text_align": "left",
+                "text_size": "normal"
+            },
+            {
+                "columns": [
+                    {
+                        "data_type": "text",
+                        "display_name": "行业",
+                        "horizontal_align": "left",
+                        "name": "industry",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "number",
+                        "display_name": "数量",
+                        "format": {},
+                        "horizontal_align": "center",
+                        "name": "count",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "number",
+                        "display_name": "上涨",
+                        "format": {},
+                        "horizontal_align": "center",
+                        "name": "up",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "number",
+                        "display_name": "下跌",
+                        "format": {},
+                        "horizontal_align": "center",
+                        "name": "down",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "lark_md",
+                        "display_name": "涨幅中位数",
+                        "horizontal_align": "left",
+                        "name": "change",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "lark_md",
+                        "display_name": "成交额(亿)",
+                        "horizontal_align": "left",
+                        "name": "volume",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "lark_md",
+                        "display_name": "成交额中位数(亿)",
+                        "horizontal_align": "left",
+                        "name": "volume_med",
+                        "width": "80px"
+                    }
+                ],
+                "element_id": "BnckOGz3HgcPSaRux8Ti",
+                "freeze_first_column": true,
+                "header_style": {
+                    "background_style": "grey",
+                    "bold": true,
+                    "lines": 1,
+                    "text_align": "center"
+                },
+                "margin": "0px",
+                "page_size": 5,
+                "rows": [
+                    {
+                        "change": "<font color='red'>-0.64%</font>",
+                        "count": 3,
+                        "down": 3,
+                        "industry": "通信",
+                        "up": 0,
+                        "volume": "26.92",
+                        "volume_med": "7.65"
+                    },
+                    {
+                        "change": "<font color='red'>-0.48%</font>",
+                        "count": 22,
+                        "down": 13,
+                        "industry": "机械设备",
+                        "up": 9,
+                        "volume": "129.66",
+                        "volume_med": "2.24"
+                    },
+                    {
+                        "change": "<font color='red'>-0.17%</font>",
+                        "count": 6,
+                        "down": 5,
+                        "industry": "银行",
+                        "up": 1,
+                        "volume": "14.63",
+                        "volume_med": "1.95"
+                    },
+                    {
+                        "change": "<font color='red'>-0.32%</font>",
+                        "count": 31,
+                        "down": 19,
+                        "industry": "电子",
+                        "up": 12,
+                        "volume": "165.46",
+                        "volume_med": "1.82"
+                    },
+                    {
+                        "change": "<font color='red'>-0.38%</font>",
+                        "count": 2,
+                        "down": 1,
+                        "industry": "非银金融",
+                        "up": 1,
+                        "volume": "3.22",
+                        "volume_med": "1.61"
+                    },
+                    {
+                        "change": "<font color='red'>-0.58%</font>",
+                        "count": 34,
+                        "down": 27,
+                        "industry": "电力设备",
+                        "up": 7,
+                        "volume": "133.66",
+                        "volume_med": "1.51"
+                    },
+                    {
+                        "change": "<font color='red'>-0.50%</font>",
+                        "count": 8,
+                        "down": 5,
+                        "industry": "有色金属",
+                        "up": 3,
+                        "volume": "16.21",
+                        "volume_med": "1.51"
+                    },
+                    {
+                        "change": "<font color='red'>-0.75%</font>",
+                        "count": 13,
+                        "down": 11,
+                        "industry": "公用事业",
+                        "up": 2,
+                        "volume": "47.85",
+                        "volume_med": "1.50"
+                    },
+                    {
+                        "change": "<font color='red'>-1.09%</font>",
+                        "count": 3,
+                        "down": 3,
+                        "industry": "石油石化",
+                        "up": 0,
+                        "volume": "4.27",
+                        "volume_med": "1.35"
+                    },
+                    {
+                        "change": "<font color='red'>-0.40%</font>",
+                        "count": 18,
+                        "down": 12,
+                        "industry": "汽车",
+                        "up": 6,
+                        "volume": "41.24",
+                        "volume_med": "1.21"
+                    }
+                ],
+                "tag": "table"
+            },
+            {
+                "element_id": "RaQsls18qM9I1YpHdcaO",
+                "margin": "0px",
+                "tag": "hr"
+            },
+            {
+                "content": "## 涨幅TOP10 (榜单总成交额: 249.68亿元)",
+                "element_id": "M0rXeTwdnU5zQAPLgevI",
+                "margin": "0px",
+                "tag": "markdown"
+            },
+            {
+                "columns": [
+                    {
+                        "data_type": "text",
+                        "display_name": "可转债",
+                        "horizontal_align": "center",
+                        "name": "name",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "lark_md",
+                        "display_name": "涨幅",
+                        "horizontal_align": "center",
+                        "name": "change",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "number",
+                        "display_name": "价格",
+                        "format": {},
+                        "horizontal_align": "center",
+                        "name": "price",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "number",
+                        "display_name": "成交额(亿)",
+                        "format": {},
+                        "horizontal_align": "center",
+                        "name": "volume",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "text",
+                        "display_name": "行业",
+                        "horizontal_align": "center",
+                        "name": "industry",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "text",
+                        "display_name": "板块",
+                        "horizontal_align": "center",
+                        "name": "market",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "text",
+                        "display_name": "剩余规模",
+                        "horizontal_align": "center",
+                        "name": "col_tfyj4cz9etd",
+                        "width": "auto"
+                    },
+                    {
+                        "data_type": "text",
+                        "display_name": "到期日期",
+                        "horizontal_align": "left",
+                        "name": "col_atcfw90oqiw",
+                        "width": "auto"
+                    }
+                ],
+                "element_id": "Gv0v_BxaMK_BsT4YuvjE",
+                "freeze_first_column": true,
+                "header_style": {
+                    "background_style": "grey",
+                    "bold": true,
+                    "text_align": "center"
+                },
+                "margin": "0px",
+                "page_size": 5,
+                "rows": [
+                    {
+                        "change": "<font color='green'>20.00%</font>",
+                        "col_atcfw90oqiw": "飞书科技有限公司",
+                        "col_tfyj4cz9etd": "飞书科技有限公司",
+                        "industry": "-nan",
+                        "market": "深交所创业板",
+                        "name": "珂玛转债",
+                        "price": 226.512,
+                        "volume": 24.64
+                    },
+                    {
+                        "change": "<font color='green'>18.11%</font>",
+                        "col_atcfw90oqiw": "飞书科技有限公司",
+                        "col_tfyj4cz9etd": "飞书科技有限公司",
+                        "industry": "环保-环保设备Ⅱ",
+                        "market": "深交所创业板",
+                        "name": "严牌转债",
+                        "price": 277.558,
+                        "volume": 45.12
+                    },
+                    {
+                        "change": "<font color='green'>5.78%</font>",
+                        "col_atcfw90oqiw": "飞书科技有限公司",
+                        "col_tfyj4cz9etd": "飞书科技有限公司",
+                        "industry": "机械设备-专用设备",
+                        "market": "上交所科创板",
+                        "name": "星球转债",
+                        "price": 163.782,
+                        "volume": 25.99
+                    },
+                    {
+                        "change": "<font color='green'>5.06%</font>",
+                        "col_atcfw90oqiw": "飞书科技有限公司",
+                        "col_tfyj4cz9etd": "飞书科技有限公司",
+                        "industry": "机械设备-通用设备",
+                        "market": "深交所创业板",
+                        "name": "泰福转债",
+                        "price": 166.21,
+                        "volume": 18.84
+                    },
+                    {
+                        "change": "<font color='green'>4.71%</font>",
+                        "col_atcfw90oqiw": "飞书科技有限公司",
+                        "col_tfyj4cz9etd": "飞书科技有限公司",
+                        "industry": "电子-消费电子",
+                        "market": "深交所创业板",
+                        "name": "胜蓝转02",
+                        "price": 241.411,
+                        "volume": 14.94
+                    },
+                    {
+                        "change": "<font color='green'>4.22%</font>",
+                        "col_atcfw90oqiw": "飞书科技有限公司",
+                        "col_tfyj4cz9etd": "飞书科技有限公司",
+                        "industry": "电力设备-电池",
+                        "market": "深交所创业板",
+                        "name": "翔丰转债",
+                        "price": 147.888,
+                        "volume": 4.4
+                    },
+                    {
+                        "change": "<font color='green'>4.15%</font>",
+                        "col_atcfw90oqiw": "飞书科技有限公司",
+                        "col_tfyj4cz9etd": "飞书科技有限公司",
+                        "industry": "电子-电子化学品Ⅱ",
+                        "market": "上交所科创板",
+                        "name": "华特转债",
+                        "price": 227.297,
+                        "volume": 64.25
+                    },
+                    {
+                        "change": "<font color='green'>3.34%</font>",
+                        "col_atcfw90oqiw": "飞书科技有限公司",
+                        "col_tfyj4cz9etd": "飞书科技有限公司",
+                        "industry": "电力设备-光伏设备",
+                        "market": "深交所创业板",
+                        "name": "帝尔转债",
+                        "price": 197.9,
+                        "volume": 35.56
+                    },
+                    {
+                        "change": "<font color='green'>2.90%</font>",
+                        "col_atcfw90oqiw": "飞书科技有限公司",
+                        "col_tfyj4cz9etd": "飞书科技有限公司",
+                        "industry": "电子-光学光电子",
+                        "market": "上交所科创板",
+                        "name": "茂莱转债",
+                        "price": 236.294,
+                        "volume": 5.68
+                    },
+                    {
+                        "change": "<font color='green'>2.44%</font>",
+                        "col_atcfw90oqiw": "飞书科技有限公司",
+                        "col_tfyj4cz9etd": "飞书科技有限公司",
+                        "industry": "汽车-汽车零部件",
+                        "market": "上交所主板",
+                        "name": "凯众转债",
+                        "price": 166.45,
+                        "volume": 10.25
+                    }
+                ],
+                "tag": "table"
+            },
+            {
+                "element_id": "ubIPNM9tYCC0EBCvKht6",
+                "margin": "0px",
+                "tag": "hr"
+            },
+            {
+                "content": "## 成交额TOP10 (榜单总成交额: 296.10亿元)",
+                "element_id": "D6Z8sn3aLIWt_EkFn93r",
+                "margin": "0px",
+                "tag": "markdown"
+            },
+            {
+                "columns": [
+                    {
+                        "data_type": "text",
+                        "display_name": "可转债",
+                        "horizontal_align": "center",
+                        "name": "name",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "lark_md",
+                        "display_name": "涨幅",
+                        "horizontal_align": "center",
+                        "name": "change",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "number",
+                        "display_name": "价格",
+                        "format": {},
+                        "horizontal_align": "center",
+                        "name": "price",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "number",
+                        "display_name": "成交额(亿)",
+                        "format": {},
+                        "horizontal_align": "center",
+                        "name": "volume",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "text",
+                        "display_name": "行业",
+                        "horizontal_align": "center",
+                        "name": "industry",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "text",
+                        "display_name": "板块",
+                        "horizontal_align": "center",
+                        "name": "market",
+                        "width": "80px"
+                    }
+                ],
+                "element_id": "DiUSiqwBQkef85vuzWmx",
+                "freeze_first_column": true,
+                "header_style": {
+                    "background_style": "grey",
+                    "bold": true,
+                    "text_align": "center"
+                },
+                "margin": "0px",
+                "page_size": 5,
+                "rows": [
+                    {
+                        "change": "<font color='green'>4.15%</font>",
+                        "industry": "电子-电子化学品Ⅱ",
+                        "market": "上交所科创板",
+                        "name": "华特转债",
+                        "price": 227.297,
+                        "volume": 64.25
+                    },
+                    {
+                        "change": "<font color='green'>18.11%</font>",
+                        "industry": "环保-环保设备Ⅱ",
+                        "market": "深交所创业板",
+                        "name": "严牌转债",
+                        "price": 277.558,
+                        "volume": 45.12
+                    },
+                    {
+                        "change": "<font color='green'>3.34%</font>",
+                        "industry": "电力设备-光伏设备",
+                        "market": "深交所创业板",
+                        "name": "帝尔转债",
+                        "price": 197.9,
+                        "volume": 35.56
+                    },
+                    {
+                        "change": "<font color='red'>-0.44%</font>",
+                        "industry": "轻工制造-家居用品",
+                        "market": "深交所主板",
+                        "name": "蒙娜转债",
+                        "price": 137.998,
+                        "volume": 27.29
+                    },
+                    {
+                        "change": "<font color='green'>5.78%</font>",
+                        "industry": "机械设备-专用设备",
+                        "market": "上交所科创板",
+                        "name": "星球转债",
+                        "price": 163.782,
+                        "volume": 25.99
+                    },
+                    {
+                        "change": "<font color='green'>20.00%</font>",
+                        "industry": "-nan",
+                        "market": "深交所创业板",
+                        "name": "珂玛转债",
+                        "price": 226.512,
+                        "volume": 24.64
+                    },
+                    {
+                        "change": "<font color='red'>-0.64%</font>",
+                        "industry": "通信-通信服务",
+                        "market": "深交所创业板",
+                        "name": "奥飞转债",
+                        "price": 310,
+                        "volume": 19.12
+                    },
+                    {
+                        "change": "<font color='green'>5.06%</font>",
+                        "industry": "机械设备-通用设备",
+                        "market": "深交所创业板",
+                        "name": "泰福转债",
+                        "price": 166.21,
+                        "volume": 18.84
+                    },
+                    {
+                        "change": "<font color='green'>1.42%</font>",
+                        "industry": "机械设备-专用设备",
+                        "market": "上交所科创板",
+                        "name": "正帆转债",
+                        "price": 161.378,
+                        "volume": 18.81
+                    },
+                    {
+                        "change": "<font color='red'>-1.18%</font>",
+                        "industry": "电子-半导体",
+                        "market": "上交所科创板",
+                        "name": "甬矽转债",
+                        "price": 179.833,
+                        "volume": 16.48
+                    }
+                ],
+                "tag": "table"
+            },
+            {
+                "element_id": "B5CRhrCkhryZiZT4eSlb",
+                "margin": "0px",
+                "tag": "hr"
+            },
+            {
+                "content": "## 跌幅TOP10 (榜单总成交额: 70.24亿元)",
+                "element_id": "u0ZhttZQFrCsZ8z61RR5",
+                "margin": "0px",
+                "tag": "markdown"
+            },
+            {
+                "columns": [
+                    {
+                        "data_type": "text",
+                        "display_name": "可转债",
+                        "horizontal_align": "center",
+                        "name": "name",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "lark_md",
+                        "display_name": "涨幅",
+                        "horizontal_align": "center",
+                        "name": "change",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "number",
+                        "display_name": "价格",
+                        "format": {},
+                        "horizontal_align": "center",
+                        "name": "price",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "number",
+                        "display_name": "成交额(亿)",
+                        "format": {},
+                        "horizontal_align": "center",
+                        "name": "volume",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "text",
+                        "display_name": "行业",
+                        "horizontal_align": "center",
+                        "name": "industry",
+                        "width": "80px"
+                    },
+                    {
+                        "data_type": "text",
+                        "display_name": "板块",
+                        "horizontal_align": "center",
+                        "name": "market",
+                        "width": "80px"
+                    }
+                ],
+                "element_id": "gBcTajn_28exdPnqzkri",
+                "freeze_first_column": true,
+                "header_style": {
+                    "background_style": "grey",
+                    "bold": true,
+                    "text_align": "center"
+                },
+                "margin": "0px",
+                "page_size": 5,
+                "rows": [
+                    {
+                        "change": "<font color='red'>-7.81%</font>",
+                        "industry": "有色金属-工业金属",
+                        "market": "上交所主板",
+                        "name": "金诚转债",
+                        "price": 630.77,
+                        "volume": 5.81
+                    },
+                    {
+                        "change": "<font color='red'>-7.24%</font>",
+                        "industry": "环保-环保设备Ⅱ",
+                        "market": "深交所主板",
+                        "name": "盈峰转债",
+                        "price": 174,
+                        "volume": 7.87
+                    },
+                    {
+                        "change": "<font color='red'>-7.13%</font>",
+                        "industry": "电力设备-电网设备",
+                        "market": "上交所主板",
+                        "name": "起帆转债",
+                        "price": 242.104,
+                        "volume": 8.37
+                    },
+                    {
+                        "change": "<font color='red'>-6.03%</font>",
+                        "industry": "电力设备-其他电源设备Ⅱ",
+                        "market": "深交所创业板",
+                        "name": "欧通转债",
+                        "price": 1030,
+                        "volume": 12.61
+                    },
+                    {
+                        "change": "<font color='red'>-5.93%</font>",
+                        "industry": "建筑材料-玻璃玻纤",
+                        "market": "深交所创业板",
+                        "name": "长海转债",
+                        "price": 141,
+                        "volume": 1.86
+                    },
+                    {
+                        "change": "<font color='red'>-5.87%</font>",
+                        "industry": "基础化工-塑料",
+                        "market": "上交所科创板",
+                        "name": "瑞科转债",
+                        "price": 153.601,
+                        "volume": 7.11
+                    },
+                    {
+                        "change": "<font color='red'>-4.63%</font>",
+                        "industry": "公用事业-电力",
+                        "market": "上交所主板",
+                        "name": "节能转债",
+                        "price": 157.332,
+                        "volume": 15.07
+                    },
+                    {
+                        "change": "<font color='red'>-4.57%</font>",
+                        "industry": "基础化工-塑料",
+                        "market": "深交所创业板",
+                        "name": "瑞丰转债",
+                        "price": 157.468,
+                        "volume": 3.05
+                    },
+                    {
+                        "change": "<font color='red'>-4.41%</font>",
+                        "industry": "环保-环境治理",
+                        "market": "深交所创业板",
+                        "name": "惠城转债",
+                        "price": 487.5,
+                        "volume": 2.78
+                    },
+                    {
+                        "change": "<font color='red'>-4.30%</font>",
+                        "industry": "国防军工-军工电子Ⅱ",
+                        "market": "上交所科创板",
+                        "name": "睿创转债",
+                        "price": 431.708,
+                        "volume": 5.71
+                    }
+                ],
+                "tag": "table"
+            }
+        ],
+        "horizontal_align": "left",
+        "horizontal_spacing": "8px",
+        "vertical_align": "center",
+        "vertical_spacing": "8px"
+    },
+    "config": {
+        "style": {
+            "text_size": {
+                "normal_v2": {
+                    "default": "normal",
+                    "mobile": "heading",
+                    "pc": "normal"
+                }
+            }
+        },
+        "update_multi": true
+    },
+    "header": {
+        "icon": {
+            "tag": "standard_icon",
+            "token": "collection_outlined"
+        },
+        "padding": "12px 8px 12px 8px",
+        "subtitle": {
+            "content": "",
+            "tag": "plain_text"
+        },
+        "template": "purple",
+        "title": {
+            "content": "Study Convertible Bond Everyday",
+            "tag": "plain_text"
+        }
+    },
+    "schema": "2.0"
+}

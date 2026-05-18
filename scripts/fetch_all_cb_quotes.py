@@ -3,12 +3,14 @@ import os
 import sys
 import time
 from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
 from mootdx.quotes import Quotes
 
 # ── 配置 ──
-OUTPUT_DIR = "convertible_bond"
+BASE_DIR = Path(__file__).resolve().parent.parent
+OUTPUT_DIR = str(BASE_DIR / "convertible_bond")
 BATCH_SIZE = 50       # 每批查询数量
 REQUEST_DELAY = 0.5   # 每批间隔(秒)
 SERVER = ('110.41.147.114', 7709)

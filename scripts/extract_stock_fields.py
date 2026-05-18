@@ -314,7 +314,8 @@ def extract_fields(data: dict) -> dict:
 
 
 def main():
-    src = Path(__file__).parent / "underlying_stock" / "603220_f10.json"
+    base = Path(__file__).resolve().parent.parent
+    src = base / "underlying_stock" / "603220_f10.json"
     if not src.exists():
         print(f"错误: 未找到 {src}", flush=True)
         return
@@ -322,7 +323,7 @@ def main():
     data = load_f10(src)
     fields = extract_fields(data)
 
-    output_path = Path(__file__).parent / "underlying_stock" / "603220_summary.json"
+    output_path = base / "underlying_stock" / "603220_summary.json"
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(fields, f, ensure_ascii=False, indent=2)
 
