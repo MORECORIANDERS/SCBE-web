@@ -1,0 +1,87 @@
+/* GitHub 极简风格 CSS 变量定义 */
+:root {
+  /* 主色调 */
+  --color-primary: #0969da;
+  --color-primary-hover: #0550ae;
+  --color-primary-active: #034694;
+
+  /* 背景色 */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f6f8fa;
+  --color-bg-tertiary: #f0f3f6;
+
+  /* 文本色 */
+  --color-text-primary: #24292f;
+  --color-text-secondary: #656d76;
+  --color-text-tertiary: #8c959f;
+
+  /* 边框色 */
+  --color-border: #d0d7de;
+  --color-border-light: #eaecef;
+
+  /* 涨跌色 - 低饱和度（反转：上涨红色，下跌绿色） */
+  --color-rise: #cf222e;
+  --color-rise-bg: #ffebe9;
+  --color-fall: #1a7f37;
+  --color-fall-bg: #dafbe1;
+  --color-flat: #656d76;
+  --color-flat-bg: #f6f8fa;
+
+  /* 功能色 */
+  --color-warning: #bf8700;
+  --color-warning-bg: #fff8c5;
+  --color-info: #0969da;
+  --color-info-bg: #ddf4ff;
+
+  /* 阴影 - GitHub 风格不使用阴影 */
+  --shadow-none: none;
+
+  /* 圆角 */
+  --radius-small: 4px;
+  --radius-medium: 6px;
+  --radius-large: 8px;
+
+  /* 间距 */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-xxl: 32px;
+
+  /* 字体 */
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  /* 行高 */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* 过渡 */
+  --transition-fast: 0.15s;
+  --transition-normal: 0.2s;
+
+  /* z-index */
+  --z-index-dropdown: 1000;
+  --z-index-sticky: 1020;
+  --z-index-fixed: 1030;
+  --z-index-modal-backdrop: 1040;
+  --z-index-modal: 1050;
+  --z-index-popover: 1060;
+  --z-index-tooltip: 1070;
+
+  /* 响应式断点 */
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 992px;
+  --breakpoint-xl: 1200px;
+}

@@ -1,0 +1,193 @@
+/* 全局样式重置 */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-secondary);
+  min-height: 100vh;
+}
+
+#app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 链接样式 */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+/* 按钮基础样式 */
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* 输入框基础样式 */
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* 列表样式 */
+ul,
+ol {
+  list-style: none;
+}
+
+/* 图片样式 */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* 表格样式 */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
+/* 工具类 */
+.text-rise {
+  color: var(--color-rise);
+}
+
+.text-fall {
+  color: var(--color-fall);
+}
+
+.text-flat {
+  color: var(--color-flat);
+}
+
+.bg-rise {
+  background-color: var(--color-rise-bg);
+  color: var(--color-rise);
+}
+
+.bg-fall {
+  background-color: var(--color-fall-bg);
+  color: var(--color-fall);
+}
+
+.bg-flat {
+  background-color: var(--color-flat-bg);
+  color: var(--color-flat);
+}
+
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.text-xs {
+  font-size: var(--font-size-xs);
+}
+
+.text-sm {
+  font-size: var(--font-size-sm);
+}
+
+.text-base {
+  font-size: var(--font-size-base);
+}
+
+.text-lg {
+  font-size: var(--font-size-lg);
+}
+
+.text-xl {
+  font-size: var(--font-size-xl);
+}
+
+.text-2xl {
+  font-size: var(--font-size-2xl);
+}
+
+.font-medium {
+  font-weight: var(--font-weight-medium);
+}
+
+.font-semibold {
+  font-weight: var(--font-weight-semibold);
+}
+
+/* 卡片样式 - GitHub 极简风格 */
+.card {
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-medium);
+  padding: var(--spacing-lg);
+}
+
+.card-sm {
+  padding: var(--spacing-md);
+}
+
+.card-header {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+/* 页面容器 */
+.page-container {
+  padding: var(--spacing-xl);
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* 响应式 */
+@media (max-width: 767px) {
+  .page-container {
+    padding: var(--spacing-md);
+  }
+}
