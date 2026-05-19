@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import {
@@ -34,6 +34,9 @@ const riseFallData = ref({
   values: mockData.riseFallDistribution.values
 })
 
+const volumeDistributionData = ref(mockData.volumeDistribution)
+const priceDistributionData = ref(mockData.priceDistribution)
+
 const bondList = ref<BondData[]>([])
 
 const quickEntries = [
@@ -43,10 +46,33 @@ const quickEntries = [
   { icon: SettingOutlined, label: '系统设置', path: '/settings' }
 ]
 
-const activeMetric = ref<string | null>(null)
+const activeMetric = ref('risefall')
+
+const chartTitles: Record<string, string> = {
+  risefall: '涨跌分布',
+  volume: '成交额分布',
+  median: '价格分布'
+}
+
+const activeChartData = computed(() => {
+  switch (activeMetric.value) {
+    case 'volume':
+      return volumeDistributionData.value
+    case 'median':
+      return priceDistributionData.value
+    case 'risefall':
+    default:
+      return riseFallData.value
+  }
+})
+
+const activeChartTitle = computed(() => chartTitles[activeMetric.value] || '涨跌分布')
 
 const handleMetricClick = (type: string) => {
   activeMetric.value = activeMetric.value === type ? null : type
+  if (activeMetric.value === null) {
+    activeMetric.value = 'risefall'
+  }
 }
 
 const handleLogout = () => {
@@ -135,26 +161,10 @@ onMounted(() => {
         </section>
 
         <section class="section rise-fall-section">
-          <div class="section-header">
-            <h2 class="section-title">涨跌分布</h2>
-            <div class="market-stats">
-              <div class="stat-item">
-                <span class="stat-label">上涨</span>
-                <span class="stat-value text-rise font-medium">{{ riseCount }}家</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">下跌</span>
-                <span class="stat-value text-fall font-medium">{{ fallCount }}家</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">平盘</span>
-                <span class="stat-value text-flat font-medium">{{ flatCount }}家</span>
-              </div>
-            </div>
-          </div>
+          <h2 class="section-title">{{ activeChartTitle }}</h2>
           <RiseFallChart
-            :categories="riseFallData.categories"
-            :values="riseFallData.values"
+            :categories="activeChartData.categories"
+            :values="activeChartData.values"
           />
         </section>
 
@@ -233,41 +243,6 @@ onMounted(() => {
   margin-bottom: var(--spacing-md);
 }
 
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
-}
-
-.section-header .section-title {
-  margin-bottom: 0;
-}
-
-.market-stats {
-  display: flex;
-  gap: var(--spacing-lg);
-  flex-wrap: wrap;
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.stat-label {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
-}
-
-.stat-value {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-primary);
-}
-
 .metrics-grid {
   display: flex;
   gap: var(--spacing-md);
@@ -287,6 +262,8 @@ onMounted(() => {
   cursor: pointer;
   transition: box-shadow 0.2s, border-color 0.2s;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .metric-card:hover {
@@ -301,23 +278,21 @@ onMounted(() => {
 
 .metric-card-header {
   margin-bottom: var(--spacing-sm);
+  text-align: center;
 }
 
 .metric-card-title {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
 }
 
 .metric-card-body {
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  flex: 1;
   gap: var(--spacing-xs);
-}
-
-.metric-card-label {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
 }
 
 .metric-card-value {
@@ -334,8 +309,9 @@ onMounted(() => {
 .risefall-stats {
   display: flex;
   gap: var(--spacing-sm);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
+  line-height: 1;
 }
 
 .risefall-stat-rise {
@@ -386,15 +362,6 @@ onMounted(() => {
   .section-title {
     font-size: var(--font-size-base);
     margin-bottom: var(--spacing-sm);
-  }
-
-  .section-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .market-stats {
-    gap: var(--spacing-md);
   }
 
   .metric-card-value {

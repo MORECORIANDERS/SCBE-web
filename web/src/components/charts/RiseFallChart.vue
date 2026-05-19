@@ -99,6 +99,14 @@ const initChart = () => {
           borderRadius: [0, 0, 0, 0]
         },
         barWidth: '60%',
+        label: {
+          show: true,
+          position: 'top',
+          color: '#24292f',
+          fontSize: 11,
+          fontWeight: 500,
+          formatter: (params: any) => Math.abs(props.values[params.dataIndex])
+        },
         animation: false
       }
     ]

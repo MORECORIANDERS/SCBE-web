@@ -332,6 +332,14 @@
     "negativeTotal": 128,
     "flatTotal": 12
   },
+  "volumeDistribution": {
+    "categories": ["<50亿", "50-100亿", "100-200亿", "200-500亿", "500亿+"],
+    "values": [34, 78, 56, 89, 40]
+  },
+  "priceDistribution": {
+    "categories": ["<100", "100-110", "110-120", "120-130", "130-140", "140-150", "150-160", "160-200", "200+"],
+    "values": [12, 45, 78, 56, 34, 22, 15, 28, 7]
+  },
   "industryData": [
     { "industry": "银行", "avgPremium": 18.5, "avgDoubleLow": 132.8, "count": 12 },
     { "industry": "光伏", "avgPremium": 8.2, "avgDoubleLow": 138.5, "count": 18 },

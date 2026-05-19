@@ -429,3 +429,75 @@ tccli scf GetFunctionLogs --FunctionName cb_snapshot_updater --Limit 10
 |-----|------|------|
 | mysql2 | ^3.6.0 | CloudBase MySQL 连接 |
 
+
+## 前端 Web 项目（monorepo）
+
+前端项目位于 `web/` 目录，是基于 Vue 3 的可转债投资分析系统。
+
+### 技术栈
+
+| 技术 | 版本 / 说明 |
+|------|------------|
+| Vue 3 | Composition API + `<script setup>` |
+| TypeScript | 全量类型覆盖 |
+| Vite 5 | 构建工具 |
+| Vue Router 4 | 路由管理 |
+| Ant Design Vue 4 | UI 组件库 |
+| ECharts 5 | 图表可视化 |
+
+### 项目结构
+
+```
+web/
+├── src/
+│   ├── views/          # 页面组件（Home、Detail、Scatter 等）
+│   ├── components/
+│   │   ├── charts/     # ECharts 图表组件（RiseFallChart、Heatmap 等）
+│   │   └── common/     # 通用组件（NavTabs、BottomNav、BondTable 等）
+│   ├── assets/         # 静态资源
+│   └── styles/         # 全局样式 / CSS 变量
+├── mock/
+│   └── data.json       # 模拟数据（市场统计、可转债列表等）
+├── public/
+├── index.html
+├── vite.config.ts
+├── tsconfig.json
+└── package.json
+```
+
+### 近期开发要点
+
+#### 市场核心指标卡片（2026-05-19）
+
+三个指标卡水平均分排布（flex 布局），点击时蓝色高亮，联动下方图表：
+
+| 指标卡 | 展示内容 | 点击联动图表 |
+|-------|---------|-------------|
+| **涨跌分布** | `156`：`12`：`89`（涨：平：跌，红：黑：绿） | 涨跌区间分布柱状图（红涨绿跌） |
+| **成交额情况** | `856.34亿元` → 较上日 `+32.15亿元`（红涨绿跌） | 成交额区间分布（<50亿 / 50-100亿 / ... / 500亿+） |
+| **中位数** | 价格 `118.72` / 涨幅 `0.45%` / 成交额 `0.38亿元` | 价格区间分布（<100 / 100-110 / ... / 200+） |
+
+#### mock 数据结构
+
+marketStats 扩展字段：
+- `volumeChange` — 成交额较上日变化（亿元）
+- `priceMedian` — 价格中位数
+- `changeMedian` — 涨幅中位数（%）
+- `volumeMedian` — 成交额中位数（亿元）
+
+图表分发数据：
+- `riseFallDistribution` — 涨跌区间分布（categories + values）
+- `volumeDistribution` — 成交额区间分布
+- `priceDistribution` — 价格区间分布（左开右闭）
+
+### 开发命令
+
+```bash
+cd web
+npm install          # 安装依赖
+npm run dev          # 启动开发服务器
+npm run build        # 构建生产版本
+npm run typecheck    # TypeScript 类型检查
+npm run lint         # ESLint 检查
+```
+
