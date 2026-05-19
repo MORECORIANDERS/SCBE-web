@@ -7,7 +7,7 @@
  */
 const https = require('https');
 const http = require('http');
-const mysql = require('mysql2');
+const mysql = require('mysql2/promise');
 
 const DB_CONFIG = {
   host: 'sh-cynosdbmysql-grp-3bg1w6t8.sql.tencentcdb.com',
@@ -16,6 +16,7 @@ const DB_CONFIG = {
   password: 'huo22QQQ',
   database: 'python12-9guk780v324f024d',
   charset: 'utf8mb4',
+  connectTimeout: 15000,
 };
 
 const API_URL = 'https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData';
@@ -104,28 +105,37 @@ function processData(items) {
   return bonds;
 }
 
-function getDbConnection() {
-  return mysql.createConnection(DB_CONFIG);
+async function getDbConnection(retries = 3) {
+  let lastError;
+  for (let i = 0; i < retries; i++) {
+    try {
+      const conn = await mysql.createConnection(DB_CONFIG);
+      return conn;
+    } catch (e) {
+      lastError = e;
+      console.error(`DB connection attempt ${i + 1}/${retries} failed: ${e.message}`);
+      if (i < retries - 1) {
+        await new Promise(r => setTimeout(r, 5000));
+      }
+    }
+  }
+  throw lastError;
 }
 
+const INSERT_SQL = `
+  INSERT INTO bond_snapshot (
+    trade_date, bond_code, bond_name, price, price_change, change_pct,
+    volume, amount, settlement, open_price, high_price, low_price,
+    buy_price, sell_price, trade_time
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`;
+
 async function insertSnapshot(conn, bond) {
-  const sql = `
-    INSERT INTO bond_snapshot (
-      trade_date, bond_code, bond_name, price, price_change, change_pct,
-      volume, amount, settlement, open_price, high_price, low_price,
-      buy_price, sell_price, trade_time
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
-  return new Promise((resolve, reject) => {
-    conn.query(sql, [
-      bond.trade_date, bond.bond_code, bond.bond_name, bond.price, bond.price_change,
-      bond.change_pct, bond.volume, bond.amount, bond.settlement, bond.open_price,
-      bond.high_price, bond.low_price, bond.buy_price, bond.sell_price, bond.trade_time
-    ], (err, result) => {
-      if (err) reject(err);
-      else resolve(result);
-    });
-  });
+  return conn.execute(INSERT_SQL, [
+    bond.trade_date, bond.bond_code, bond.bond_name, bond.price, bond.price_change,
+    bond.change_pct, bond.volume, bond.amount, bond.settlement, bond.open_price,
+    bond.high_price, bond.low_price, bond.buy_price, bond.sell_price, bond.trade_time
+  ]);
 }
 
 function sendFeishuNotification(count, tradeDate, tableName, successCount, errorCount, elapsed, sampleError) {
@@ -191,7 +201,7 @@ function sendFeishuNotification(count, tradeDate, tableName, successCount, error
 
 async function main() {
   const startTime = Date.now();
-  const randomDelay = Math.floor(Math.random() * 241) + 60;
+  const randomDelay = Math.floor(Math.random() * 109) + 12;
   console.log(`[${new Date().toISOString()}] Cloud function started. Random delay: ${randomDelay}s`);
 
   await new Promise(r => setTimeout(r, randomDelay * 1000));
@@ -203,7 +213,7 @@ async function main() {
   const bonds = processData(rawItems);
   console.log(`Processed: ${bonds.length} bonds (after filtering "定转")`);
 
-  const conn = getDbConnection();
+  const conn = await getDbConnection();
   let successCount = 0;
   let errorCount = 0;
   let sampleError = '';
@@ -223,7 +233,7 @@ async function main() {
     }
   }
 
-  conn.end();
+  await conn.end();
 
   const elapsed = Math.round((Date.now() - startTime) / 1000);
   console.log(`[${new Date().toISOString()}] Done! Success: ${successCount}, Errors: ${errorCount}, Elapsed: ${elapsed}s`);
