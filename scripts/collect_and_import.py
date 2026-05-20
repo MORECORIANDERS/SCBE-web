@@ -1,13 +1,19 @@
 """
-可转债全量数据采集 + 入库 CloudBase MySQL
+可转债 F10 数据采集 + 入库 CloudBase MySQL
 =========================================
 流程:
-  1. 读取新浪 CSV 获取 343 只可转债列表
+  1. 读取可转债列表（支持两种模式）:
+     - CSV 模式: 从本地 CSV 读取（首次全量采集）
+     - DB 模式:   从 bond_list 表读取（增量更新）
   2. 遍历每只转债，通过 mootdx 获取 F10（转债详情 + 正股详情）
   3. 提取关键字段（参考 f10_summary.json + stock_summary.json）
-  4. 写入 CloudBase MySQL（bond_static: 转债基本信息, bond_snapshot: 日行情）
+  4. 写入 CloudBase MySQL（bond_static: 转债基本信息）
 
-由于 343 只转债 × 2 次 F10 调用 ≈ 686 次网络请求，预计耗时 15~30 分钟。
+使用说明:
+  - 首次全量采集: DATA_SOURCE = 'csv'，读取本地 CSV 文件
+  - 增量更新:     DATA_SOURCE = 'db'，从数据库 bond_list 表读取
+
+预计耗时: 343 只转债 × 2 次 F10 ≈ 686 次请求，约 15~30 分钟
 """
 import json
 import os
@@ -24,6 +30,11 @@ import pandas as pd
 # ============================================================
 DO_COLLECT = True    # Phase 1: 从 mootdx 采集 F10 数据
 DO_IMPORT = True     # Phase 2: 写入 CloudBase MySQL
+
+# 数据源模式：'csv' 或 'db'
+# csv: 从本地 CSV 读取（首次全量采集）
+# db:  从 bond_list 表读取（增量更新）
+DATA_SOURCE = 'db'
 
 # ============================================================
 # 配置
@@ -271,11 +282,37 @@ def extract_stock_f10_fields(f10_data):
 # Phase 1: 采集
 # ============================================================
 
+def load_bond_list_from_db():
+    """从数据库 bond_list 表读取可转债代码列表"""
+    conn = setup_db()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT bond_code, bond_name, market
+        FROM bond_list
+        WHERE is_active = 1
+        ORDER BY bond_code
+    """)
+
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return pd.DataFrame(rows, columns=["转债代码", "转债名称", "市场"])
+
+
 def collect_all():
     """遍历所有转债，通过 mootdx 采集 F10 数据"""
     from mootdx.quotes import Quotes
 
-    df = pd.read_csv(CSV_PATH)
+    # 根据数据源模式选择读取方式
+    if DATA_SOURCE == 'csv':
+        print(f"从 CSV 读取: {CSV_PATH}")
+        df = pd.read_csv(CSV_PATH)
+    else:
+        print("从数据库 bond_list 表读取...")
+        df = load_bond_list_from_db()
+
     total = len(df)
     print(f"可转债总数: {total}")
     print(f"预计采集: {total * 2} 次 F10 调用（债券 + 正股）")

@@ -1,0 +1,9 @@
+{
+  "name": "cb_oversold_detector",
+  "version": "1.0.0",
+  "description": "可转债CCI+WR双超卖检测云函数",
+  "main": "index.js",
+  "dependencies": {
+    "mysql2": "^3.6.0"
+  }
+}
