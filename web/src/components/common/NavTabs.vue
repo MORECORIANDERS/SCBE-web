@@ -48,13 +48,13 @@ const handleTabChange = (key: string) => {
 
         <a-tab-pane key="heatmap">
           <template #tab>
-            <span class="tab-label">行业热力图</span>
+            <span class="tab-label">行业</span>
           </template>
         </a-tab-pane>
 
         <a-tab-pane key="scatter">
           <template #tab>
-            <span class="tab-label">双低分析</span>
+            <span class="tab-label">策略</span>
           </template>
         </a-tab-pane>
 

@@ -1,169 +1,180 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import { DatePicker, Segmented } from 'ant-design-vue'
-import { Table } from 'ant-design-vue'
-import * as echarts from 'echarts'
-import type { EChartsOption } from 'echarts'
+import { ref, onMounted, computed, h } from 'vue'
+import { Table, Spin } from 'ant-design-vue'
 import NavTabs from '@/components/common/NavTabs.vue'
 import BottomNav from '@/components/common/BottomNav.vue'
 import mockData from '../../mock/data.json'
 
-const selectedDate = ref<string>(new Date().toISOString().split('T')[0])
-const selectedDimension = ref<'premium' | 'doubleLow'>('premium')
-
-const industryData = ref(mockData.industryData)
-
-const chartRef = ref<HTMLElement | null>(null)
-let chartInstance: echarts.ECharts | null = null
-
-const dimensionLabels = {
-  premium: '转股溢价率',
-  doubleLow: '双低数值'
+// ==================== 类型定义 ====================
+interface IndustryItem {
+  industry: string
+  total: number
+  up_count: number
+  down_count: number
+  flat_count: number
+  avg_change: number
+  total_amount: number
+  avg_amount: number
+  change_median: number
 }
 
-const initChart = () => {
-  if (!chartRef.value) return
+// ==================== 状态 ====================
+const loading = ref(false)
+const industryData = ref<IndustryItem[]>([])
 
-  if (chartInstance) {
-    chartInstance.dispose()
-  }
-
-  chartInstance = echarts.init(chartRef.value)
-
-  const data = industryData.value.map(item => ({
-    name: item.industry,
-    value: selectedDimension.value === 'premium' ? item.avgPremium : item.avgDoubleLow
-  }))
-
-  const sortedData = [...data].sort((a, b) => b.value - a.value)
-
-  const option: EChartsOption = {
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: '#ffffff',
-      borderColor: '#d0d7de',
-      borderWidth: 1,
-      textStyle: {
-        color: '#24292f',
-        fontSize: 12
-      },
-      axisPointer: {
-        type: 'shadow'
-      }
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '15%',
-      top: '10%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: sortedData.map(item => item.name),
-      axisLine: {
-        lineStyle: {
-          color: '#d0d7de'
-        }
-      },
-      axisLabel: {
-        color: '#656d76',
-        fontSize: 11,
-        interval: 0,
-        rotate: 45
-      },
-      axisTick: {
-        show: false
-      }
-    },
-    yAxis: {
-      type: 'value',
-      name: dimensionLabels[selectedDimension.value],
-      nameTextStyle: {
-        color: '#656d76',
-        fontSize: 12
-      },
-      axisLine: {
-        show: false
-      },
-      axisLabel: {
-        color: '#656d76',
-        fontSize: 11
-      },
-      splitLine: {
-        lineStyle: {
-          color: '#f0f3f6'
-        }
-      },
-      axisTick: {
-        show: false
-      }
-    },
-    series: [
-      {
-        name: dimensionLabels[selectedDimension.value],
-        type: 'bar',
-        data: sortedData.map(item => item.value),
-        itemStyle: {
-          color: (params: any) => {
-            const value = params.value
-            const max = Math.max(...sortedData.map(item => item.value))
-            const min = Math.min(...sortedData.map(item => item.value))
-            const ratio = (value - min) / (max - min)
-            const color = selectedDimension.value === 'premium' ? '#cf222e' : '#0969da'
-            const alpha = 0.3 + ratio * 0.7
-            return color + Math.round(alpha * 255).toString(16).padStart(2, '0')
-          },
-          borderRadius: [0, 0, 0, 0]
-        },
-        barWidth: '50%',
-        animation: false
-      }
-    ]
-  }
-
-  chartInstance.setOption(option)
+// ==================== 数据获取 ====================
+const fetchIndustryData = async () => {
+  loading.value = true
+  await new Promise(r => setTimeout(r, 300))
+  industryData.value = mockData.industryStats || []
+  loading.value = false
 }
 
-onMounted(() => {
-  initChart()
+// ==================== 行业表格列定义 ====================
+const maxChange = computed(() => {
+  const vals = industryData.value.map(d => Math.abs(d.change_median))
+  return Math.max(...vals, 0.01)
 })
 
-watch(selectedDimension, () => {
-  initChart()
+const maxAmount = computed(() => {
+  return Math.max(...industryData.value.map(d => d.total_amount), 1)
 })
 
-const columns = [
+const maxAvgAmount = computed(() => {
+  return Math.max(...industryData.value.map(d => d.avg_amount), 1)
+})
+
+const industryColumns = [
   {
     title: '行业',
     dataIndex: 'industry',
-    key: 'industry'
+    key: 'industry',
+    fixed: 'left' as const,
+    align: 'center' as const,
+    sorter: (a: IndustryItem, b: IndustryItem) => a.industry.localeCompare(b.industry),
   },
   {
-    title: '平均溢价率',
-    dataIndex: 'avgPremium',
-    key: 'avgPremium',
-    sorter: (a: any, b: any) => a.avgPremium - b.avgPremium,
-    customRender: ({ text }: { text: number }) => `${text.toFixed(2)}%`
+    title: '总数',
+    dataIndex: 'total',
+    key: 'total',
+    align: 'center' as const,
+    sorter: (a: IndustryItem, b: IndustryItem) => a.total - b.total,
+    customRender: ({ text }: { text: number }) => {
+      return h('span', { style: { fontWeight: 500 } }, text)
+    },
   },
   {
-    title: '平均双低',
-    dataIndex: 'avgDoubleLow',
-    key: 'avgDoubleLow',
-    sorter: (a: any, b: any) => a.avgDoubleLow - b.avgDoubleLow,
-    customRender: ({ text }: { text: number }) => text.toFixed(2)
+    title: '下跌',
+    dataIndex: 'down_count',
+    key: 'down_count',
+    align: 'center' as const,
+    sorter: (a: IndustryItem, b: IndustryItem) => a.down_count - b.down_count,
+    customRender: ({ text }: { text: number }) => {
+      return h('span', { style: { color: '#52c41a', fontWeight: 500 } }, text)
+    },
   },
   {
-    title: '转债数量',
-    dataIndex: 'count',
-    key: 'count',
-    sorter: (a: any, b: any) => a.count - b.count
-  }
+    title: '上涨',
+    dataIndex: 'up_count',
+    key: 'up_count',
+    align: 'center' as const,
+    sorter: (a: IndustryItem, b: IndustryItem) => a.up_count - b.up_count,
+    customRender: ({ text }: { text: number }) => {
+      return h('span', { style: { color: '#ff4d4f', fontWeight: 500 } }, text)
+    },
+  },
+  {
+    title: '涨幅中位数',
+    dataIndex: 'change_median',
+    key: 'change_median',
+    align: 'center' as const,
+    sorter: (a: IndustryItem, b: IndustryItem) => a.change_median - b.change_median,
+    customRender: ({ text }: { text: number }) => {
+      const pct = Math.min((Math.abs(text) / maxChange.value) * 100, 100)
+      return h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '1px', paddingLeft: '2px' } }, [
+        h('span', { style: { color: text >= 0 ? '#ff4d4f' : '#52c41a', fontWeight: 500, fontSize: '13px', minWidth: '52px', textAlign: 'right' } }, `${text >= 0 ? '+' : ''}${text.toFixed(2)}%`),
+        h('div', { style: { display: 'flex', alignItems: 'center', width: '90px', height: '16px', borderRadius: '4px', overflow: 'hidden' } }, [
+          h('div', { style: { flex: 1, height: '100%', display: 'flex', justifyContent: 'flex-end', backgroundColor: '#f6ffed' } }, [
+            text < 0 ? h('div', { style: { width: `${pct}%`, height: '100%', backgroundColor: '#52c41a', borderRadius: '3px 0 0 3px', transition: 'width 0.3s' } }) : null,
+          ]),
+          h('div', { style: { width: '1px', height: '100%', backgroundColor: '#d0d7de' } }),
+          h('div', { style: { flex: 1, height: '100%', backgroundColor: '#fff2f0' } }, [
+            text >= 0 ? h('div', { style: { width: `${pct}%`, height: '100%', backgroundColor: '#ff4d4f', borderRadius: '0 3px 3px 0', transition: 'width 0.3s' } }) : null,
+          ]),
+        ]),
+      ])
+    },
+  },
+  {
+    title: '成交额（亿）',
+    dataIndex: 'total_amount',
+    key: 'total_amount',
+    align: 'center' as const,
+    sorter: (a: IndustryItem, b: IndustryItem) => a.total_amount - b.total_amount,
+    customRender: ({ text }: { text: number }) => {
+      const pct = (text / maxAmount.value) * 100
+      return h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '1px', paddingLeft: '2px' } }, [
+        h('span', { style: { fontWeight: 500, fontSize: '13px', minWidth: '48px', textAlign: 'right' } }, text.toFixed(2)),
+        h('div', {
+          style: {
+            width: '80px',
+            height: '16px',
+            backgroundColor: '#fffbe6',
+            borderRadius: '4px',
+            overflow: 'hidden',
+          }
+        }, [
+          h('div', {
+            style: {
+              width: `${Math.min(pct, 100)}%`,
+              height: '100%',
+              backgroundColor: '#faad14',
+              borderRadius: '4px',
+              transition: 'width 0.3s',
+            }
+          }),
+        ]),
+      ])
+    },
+  },
+  {
+    title: '成交额中位数',
+    dataIndex: 'avg_amount',
+    key: 'avg_amount',
+    align: 'center' as const,
+    sorter: (a: IndustryItem, b: IndustryItem) => a.avg_amount - b.avg_amount,
+    customRender: ({ text }: { text: number }) => {
+      const pct = (text / maxAvgAmount.value) * 100
+      return h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '1px', paddingLeft: '2px' } }, [
+        h('span', { style: { fontWeight: 500, fontSize: '13px', minWidth: '48px', textAlign: 'right' } }, text.toFixed(2)),
+        h('div', {
+          style: {
+            width: '80px',
+            height: '16px',
+            backgroundColor: '#fffbe6',
+            borderRadius: '4px',
+            overflow: 'hidden',
+          }
+        }, [
+          h('div', {
+            style: {
+              width: `${Math.min(pct, 100)}%`,
+              height: '100%',
+              backgroundColor: '#faad14',
+              borderRadius: '4px',
+              transition: 'width 0.3s',
+            }
+          }),
+        ]),
+      ])
+    },
+  },
 ]
 
-const formatNumber = (num: number) => {
-  return num.toFixed(2)
-}
+// ==================== 生命周期 ====================
+onMounted(() => {
+  fetchIndustryData()
+})
 </script>
 
 <template>
@@ -173,51 +184,22 @@ const formatNumber = (num: number) => {
     <div class="main-content">
       <div class="page-container">
         <div class="page-header">
-          <h1 class="page-title">行业热力图</h1>
-          <div class="page-controls">
-            <a-date-picker
-              v-model:value="selectedDate"
-              size="small"
-              style="width: 150px"
-            />
-            <a-segmented
-              v-model:value="selectedDimension"
-              :options="[
-                { label: '溢价率', value: 'premium' },
-                { label: '双低数值', value: 'doubleLow' }
-              ]"
-            />
-          </div>
+          <h1 class="page-title">行业分析</h1>
         </div>
 
-        <section class="section">
-          <h2 class="section-title">{{ dimensionLabels[selectedDimension] }}分布</h2>
-          <div class="chart-container">
-            <div ref="chartRef" class="chart"></div>
-          </div>
-        </section>
-
-        <section class="section">
-          <h2 class="section-title">行业均值排行</h2>
+        <a-spin :spinning="loading">
           <div class="table-wrapper">
             <a-table
-              :columns="columns"
+              :columns="industryColumns"
               :data-source="industryData"
-              :pagination="{ pageSize: 10 }"
-              :row-key="(record: any) => record.industry"
+              :pagination="false"
+              :row-key="(record: IndustryItem) => record.industry"
+              :scroll="{ x: 'max-content' }"
               size="middle"
-            >
-              <template #bodyCell="{ column, record }">
-                <template v-if="column.key === 'avgPremium'">
-                  <span class="text-fall">{{ formatNumber(record.avgPremium) }}%</span>
-                </template>
-                <template v-else-if="column.key === 'avgDoubleLow'">
-                  <span class="font-medium">{{ formatNumber(record.avgDoubleLow) }}</span>
-                </template>
-              </template>
-            </a-table>
+              bordered
+            />
           </div>
-        </section>
+        </a-spin>
       </div>
     </div>
 
@@ -241,52 +223,17 @@ const formatNumber = (num: number) => {
 .page-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: var(--spacing-xl);
+  padding: var(--spacing-lg) var(--spacing-xl);
 }
 
 .page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-xl);
-  flex-wrap: wrap;
-  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
 }
 
 .page-title {
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
-}
-
-.page-controls {
-  display: flex;
-  gap: var(--spacing-md);
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.section {
-  margin-bottom: var(--spacing-xl);
-}
-
-.section-title {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  margin-bottom: var(--spacing-lg);
-}
-
-.chart-container {
-  background-color: var(--color-bg-primary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-medium);
-  padding: var(--spacing-lg);
-}
-
-.chart {
-  width: 100%;
-  height: 400px;
 }
 
 .table-wrapper {
@@ -296,22 +243,37 @@ const formatNumber = (num: number) => {
   overflow: hidden;
 }
 
+:deep(.ant-table-thead > tr > th) {
+  text-align: center !important;
+  font-weight: var(--font-weight-semibold);
+  font-size: 13px;
+  padding: 6px 8px !important;
+}
+
+:deep(.ant-table-tbody > tr > td) {
+  padding: 4px 8px !important;
+  font-size: 13px;
+}
+
+:deep(.ant-table-body::-webkit-scrollbar) {
+  display: none;
+}
+
+:deep(.ant-table-body) {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+:deep(.ant-table-ping-right:not(.ant-table-has-fix-right) .ant-table-container::after) {
+  box-shadow: none;
+}
+
 @media (max-width: 767px) {
   .page-container {
-    padding: var(--spacing-md);
-  }
-
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
+    padding: var(--spacing-sm) var(--spacing-md);
   }
 
   .page-title {
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-lg);
   }
-
-  .chart {
-    height: 300px;
-  }
-}
-</style>
+}</style>

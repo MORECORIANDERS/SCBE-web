@@ -1,157 +1,145 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { DatePicker } from 'ant-design-vue'
-import * as echarts from 'echarts'
-import type { EChartsOption } from 'echarts'
+import { ref, computed, h } from 'vue'
+import { Table, Tag, Select, Input, InputNumber } from 'ant-design-vue'
 import NavTabs from '@/components/common/NavTabs.vue'
 import BottomNav from '@/components/common/BottomNav.vue'
 import mockData from '../../mock/data.json'
 
-const selectedDate = ref<string>(new Date().toISOString().split('T')[0])
-
-const chartRef = ref<HTMLElement | null>(null)
-let chartInstance: echarts.ECharts | null = null
-
-const industryColors: Record<string, string> = {
-  '银行': '#0969da',
-  '光伏': '#1a7f37',
-  '电子': '#8250df',
-  '化工': '#bf8700',
-  '食品': '#cf222e',
-  '医药': '#0550ae',
-  '汽车': '#8c959f',
-  '环保': '#2da44e',
-  '通信': '#6e7781',
-  '证券': '#a371f7'
+interface OversoldBond {
+  bond_code: string
+  bond_name: string
+  price: string
+  change_percent: number
+  is_oversold: boolean
+  industry: string
+  remain_scale: number
+  maturity_date: string
+  cci: number
+  wr: number
 }
 
-const initChart = () => {
-  if (!chartRef.value) return
+const rawData = ref<OversoldBond[]>(mockData.oversoldBonds || [])
 
-  if (chartInstance) {
-    chartInstance.dispose()
-  }
+const searchText = ref('')
+const filterIndustry = ref<string | undefined>(undefined)
+const filterOversold = ref<string | undefined>(undefined)
+const filterScaleMin = ref<number | undefined>(undefined)
+const filterScaleMax = ref<number | undefined>(undefined)
 
-  chartInstance = echarts.init(chartRef.value)
-
-  const bonds = mockData.bonds
-
-  const series = Object.keys(industryColors).map(industry => {
-    const industryBonds = bonds.filter(bond => bond.industry === industry)
-    return {
-      name: industry,
-      type: 'scatter',
-      data: industryBonds.map(bond => [bond.premium, bond.price, bond]),
-      symbolSize: 8,
-      itemStyle: {
-        color: industryColors[industry]
-      }
-    }
-  })
-
-  const option: EChartsOption = {
-    tooltip: {
-      trigger: 'item',
-      backgroundColor: '#ffffff',
-      borderColor: '#d0d7de',
-      borderWidth: 1,
-      textStyle: {
-        color: '#24292f',
-        fontSize: 12
-      },
-      formatter: (params: any) => {
-        const bond = params.data[2]
-        return `
-          <div style="font-weight: 500; margin-bottom: 4px;">${bond.name} (${bond.code})</div>
-          <div>转债价格: <strong>${bond.price.toFixed(2)}</strong></div>
-          <div>转股溢价率: <strong>${bond.premium.toFixed(2)}%</strong></div>
-          <div>双低数值: <strong>${bond.doubleLow.toFixed(2)}</strong></div>
-          <div>行业: ${bond.industry}</div>
-        `
-      }
-    },
-    legend: {
-      orient: 'horizontal',
-      bottom: 10,
-      textStyle: {
-        color: '#656d76',
-        fontSize: 11
-      },
-      itemWidth: 12,
-      itemHeight: 12,
-      pageTextStyle: {
-        color: '#656d76'
-      }
-    },
-    grid: {
-      left: '5%',
-      right: '5%',
-      bottom: '15%',
-      top: '5%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'value',
-      name: '转股溢价率 (%)',
-      nameTextStyle: {
-        color: '#656d76',
-        fontSize: 12,
-        padding: [0, 0, 0, -20]
-      },
-      axisLine: {
-        lineStyle: {
-          color: '#d0d7de'
-        }
-      },
-      axisLabel: {
-        color: '#656d76',
-        fontSize: 11,
-        formatter: '{value}%'
-      },
-      splitLine: {
-        lineStyle: {
-          color: '#f0f3f6'
-        }
-      },
-      axisTick: {
-        show: false
-      }
-    },
-    yAxis: {
-      type: 'value',
-      name: '转债价格 (元)',
-      nameTextStyle: {
-        color: '#656d76',
-        fontSize: 12,
-        padding: [0, 0, 0, -20]
-      },
-      axisLine: {
-        show: false
-      },
-      axisLabel: {
-        color: '#656d76',
-        fontSize: 11,
-        formatter: '{value}'
-      },
-      splitLine: {
-        lineStyle: {
-          color: '#f0f3f6'
-        }
-      },
-      axisTick: {
-        show: false
-      }
-    },
-    series: series,
-    animation: false
-  }
-
-  chartInstance.setOption(option)
-}
-
-onMounted(() => {
-  initChart()
+const industryOptions = computed(() => {
+  const set = new Set(rawData.value.map(d => d.industry))
+  return Array.from(set).sort().map(v => ({ value: v, label: v }))
 })
+
+const filteredData = computed(() => {
+  let list = rawData.value
+  if (searchText.value) {
+    const q = searchText.value.toLowerCase()
+    list = list.filter(d => d.bond_name.toLowerCase().includes(q) || d.bond_code.toLowerCase().includes(q))
+  }
+  if (filterIndustry.value) {
+    list = list.filter(d => d.industry === filterIndustry.value)
+  }
+  if (filterOversold.value === 'yes') {
+    list = list.filter(d => d.is_oversold)
+  } else if (filterOversold.value === 'no') {
+    list = list.filter(d => !d.is_oversold)
+  }
+  if (filterScaleMin.value !== undefined) {
+    list = list.filter(d => d.remain_scale >= filterScaleMin.value!)
+  }
+  if (filterScaleMax.value !== undefined) {
+    list = list.filter(d => d.remain_scale <= filterScaleMax.value!)
+  }
+  return list
+})
+
+const oversoldColumns = [
+  {
+    title: '转债名称',
+    dataIndex: 'bond_name',
+    key: 'bond_name',
+    fixed: 'left' as const,
+    width: 100,
+  },
+  {
+    title: '价格',
+    dataIndex: 'price',
+    key: 'price',
+    align: 'center' as const,
+    width: 70,
+  },
+  {
+    title: '涨跌幅',
+    dataIndex: 'change_percent',
+    key: 'change_percent',
+    align: 'center' as const,
+    width: 80,
+    sorter: (a: OversoldBond, b: OversoldBond) => a.change_percent - b.change_percent,
+    customRender: ({ text }: { text: number }) => {
+      const color = text >= 0 ? '#ff4d4f' : '#52c41a'
+      const prefix = text >= 0 ? '+' : ''
+      return h('span', { style: { color, fontWeight: 500 } }, `${prefix}${text.toFixed(2)}%`)
+    },
+  },
+  {
+    title: '超卖',
+    dataIndex: 'is_oversold',
+    key: 'is_oversold',
+    align: 'center' as const,
+    width: 60,
+    customRender: ({ text }: { text: boolean }) => {
+      return h(Tag, { color: text ? 'red' : 'default' }, () => text ? '是' : '否')
+    },
+  },
+  {
+    title: '行业',
+    dataIndex: 'industry',
+    key: 'industry',
+    align: 'center' as const,
+    width: 80,
+  },
+  {
+    title: '剩余规模',
+    dataIndex: 'remain_scale',
+    key: 'remain_scale',
+    align: 'center' as const,
+    width: 80,
+    sorter: (a: OversoldBond, b: OversoldBond) => a.remain_scale - b.remain_scale,
+    customRender: ({ text }: { text: number }) => {
+      return h('span', {}, `${text.toFixed(2)}亿`)
+    },
+  },
+  {
+    title: '到期日期',
+    dataIndex: 'maturity_date',
+    key: 'maturity_date',
+    align: 'center' as const,
+    width: 100,
+  },
+  {
+    title: 'CCI',
+    dataIndex: 'cci',
+    key: 'cci',
+    align: 'center' as const,
+    width: 80,
+    sorter: (a: OversoldBond, b: OversoldBond) => a.cci - b.cci,
+    customRender: ({ text }: { text: number }) => {
+      return h(Tag, { color: text < -100 ? 'red' : 'default' }, () => text.toFixed(2))
+    },
+  },
+  {
+    title: 'WR',
+    dataIndex: 'wr',
+    key: 'wr',
+    align: 'center' as const,
+    width: 80,
+    sorter: (a: OversoldBond, b: OversoldBond) => a.wr - b.wr,
+    customRender: ({ text }: { text: number }) => {
+      return h(Tag, { color: text > 80 ? 'red' : 'default' }, () => text.toFixed(2))
+    },
+  },
+]
 </script>
 
 <template>
@@ -161,37 +149,73 @@ onMounted(() => {
     <div class="main-content">
       <div class="page-container">
         <div class="page-header">
-          <h1 class="page-title">双低散点分析</h1>
-          <div class="page-controls">
-            <a-date-picker
-              v-model:value="selectedDate"
-              size="small"
-            />
-          </div>
+          <h1 class="page-title">策略分析</h1>
         </div>
 
         <section class="section">
-          <h2 class="section-title">价格 vs 溢价率分布</h2>
-          <div class="chart-container">
-            <div ref="chartRef" class="chart"></div>
-          </div>
-          <div class="chart-legend-note">
-            <p class="text-secondary text-sm">
-              * X轴：转股溢价率（越低越好）<br>
-              * Y轴：转债价格（越低越好）<br>
-              * 右下角区域为双低优选区域
-            </p>
+          <div class="filter-bar">
+            <Input
+              v-model:value="searchText"
+              placeholder="搜索转债名称/代码"
+              style="width: 200px"
+              size="small"
+              allow-clear
+            />
+            <Select
+              v-model:value="filterIndustry"
+              placeholder="行业筛选"
+              style="width: 140px"
+              size="small"
+              :options="industryOptions"
+              allow-clear
+            />
+            <Select
+              v-model:value="filterOversold"
+              placeholder="是否超卖"
+              style="width: 120px"
+              size="small"
+              allow-clear
+            >
+              <Select.Option value="yes">是</Select.Option>
+              <Select.Option value="no">否</Select.Option>
+            </Select>
+            <span class="filter-label">剩余规模</span>
+            <InputNumber
+              v-model:value="filterScaleMin"
+              placeholder="最小值"
+              :min="0"
+              :precision="2"
+              size="small"
+              style="width: 100px"
+            />
+            <span class="filter-sep">—</span>
+            <InputNumber
+              v-model:value="filterScaleMax"
+              placeholder="最大值"
+              :min="0"
+              :precision="2"
+              size="small"
+              style="width: 100px"
+            />
           </div>
         </section>
 
         <section class="section">
-          <div class="tips-card">
-            <h3 class="tips-title">双低策略说明</h3>
-            <p class="text-secondary text-sm">
-              双低 = 转债价格 + 转股溢价率 × 100<br><br>
-              双低数值越小，表示转债价格越低、溢价率越低，投资价值相对越高。<br>
-              该策略适合寻找安全边际较高、进攻性较强的可转债标的。
-            </p>
+          <div v-if="filteredData.length > 0">
+            <div class="table-wrapper">
+              <a-table
+                :columns="oversoldColumns"
+                :data-source="filteredData"
+                :pagination="{ pageSize: 20 }"
+                :row-key="(record: OversoldBond) => record.bond_code"
+                :scroll="{ x: 'max-content' }"
+                size="small"
+                bordered
+              />
+            </div>
+          </div>
+          <div v-else class="empty-state">
+            <a-tag color="blue">暂无匹配数据</a-tag>
           </div>
         </section>
       </div>
@@ -224,7 +248,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: var(--spacing-lg);
   flex-wrap: wrap;
   gap: var(--spacing-md);
 }
@@ -235,54 +259,69 @@ onMounted(() => {
   color: var(--color-text-primary);
 }
 
-.page-controls {
-  display: flex;
-  gap: var(--spacing-md);
-  align-items: center;
-}
-
 .section {
-  margin-bottom: var(--spacing-xl);
-}
-
-.section-title {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
   margin-bottom: var(--spacing-lg);
 }
 
-.chart-container {
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.filter-label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.filter-sep {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.table-wrapper {
   background-color: var(--color-bg-primary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-medium);
-  padding: var(--spacing-lg);
+  overflow: hidden;
 }
 
-.chart {
-  width: 100%;
-  height: 500px;
+:deep(.ant-table-tbody > tr > td) {
+  padding: 2px 4px !important;
+  font-size: 12px;
 }
 
-.chart-legend-note {
-  margin-top: var(--spacing-md);
-  padding: var(--spacing-md);
-  background-color: var(--color-bg-secondary);
-  border-radius: var(--radius-small);
+:deep(.ant-table-thead > tr > th) {
+  text-align: center !important;
+  font-size: 12px;
+  padding: 4px 4px !important;
 }
 
-.tips-card {
+:deep(.ant-table-body::-webkit-scrollbar) {
+  display: none;
+}
+
+:deep(.ant-table-body) {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+:deep(.ant-table-ping-right:not(.ant-table-has-fix-right) .ant-table-container::after) {
+  box-shadow: none;
+}
+
+:deep(.ant-tag) {
+  margin-inline-end: 0;
+}
+
+.empty-state {
+  padding: 40px;
+  text-align: center;
   background-color: var(--color-bg-primary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-medium);
-  padding: var(--spacing-lg);
-}
-
-.tips-title {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  margin-bottom: var(--spacing-md);
 }
 
 @media (max-width: 767px) {
@@ -297,10 +336,6 @@ onMounted(() => {
 
   .page-title {
     font-size: var(--font-size-xl);
-  }
-
-  .chart {
-    height: 350px;
   }
 }
 </style>

@@ -14,8 +14,8 @@ const route = useRoute()
 
 const tabs = [
   { key: 'home', label: '首页', path: '/', icon: HomeOutlined },
-  { key: 'heatmap', label: '热力图', path: '/heatmap', icon: AppstoreOutlined },
-  { key: 'scatter', label: '双低', path: '/scatter', icon: LineChartOutlined },
+  { key: 'heatmap', label: '行业', path: '/heatmap', icon: AppstoreOutlined },
+  { key: 'scatter', label: '策略', path: '/scatter', icon: LineChartOutlined },
   { key: 'control', label: '控制', path: '/control', icon: ControlOutlined },
   { key: 'settings', label: '配置', path: '/settings', icon: SettingOutlined }
 ]

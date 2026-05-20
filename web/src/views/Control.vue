@@ -74,7 +74,7 @@ const statusMap = {
                   @click="handleCollect"
                   :loading="runStatus === 'running'"
                 >
-                  {{ runStatus === 'running' ? '采集中...' : '立即手动采集可转债数据' }}
+                  {{ runStatus === 'running' ? '采集中...' : '更新数据' }}
                 </a-button>
               </div>
             </div>

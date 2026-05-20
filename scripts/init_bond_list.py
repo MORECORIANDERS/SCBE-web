@@ -37,10 +37,9 @@ def create_table(conn):
             bond_name VARCHAR(50) DEFAULT '' COMMENT '转债名称',
             market VARCHAR(10) DEFAULT '' COMMENT '市场（沪市/深市）',
             is_active TINYINT(1) DEFAULT 1 COMMENT '是否在交易（1=是，0=否）',
-            created_at DATE DEFAULT (CURRENT_DATE) COMMENT '首次入库日期',
-            updated_at DATE DEFAULT (CURRENT_DATE) ON UPDATE CURRENT_DATE COMMENT '最后更新日期',
-            INDEX idx_market (market),
-            INDEX idx_updated_at (updated_at)
+            created_at DATE COMMENT '首次入库日期',
+            updated_at DATE COMMENT '最后更新日期',
+            INDEX idx_market (market)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='可转债代码基础信息表'
     """)
 
@@ -58,13 +57,15 @@ def import_from_csv(conn, csv_path: str):
     cur = conn.cursor()
     df = pd.read_csv(csv_path)
 
+    today = datetime.now().strftime('%Y-%m-%d')
+
     sql = """
-        INSERT INTO bond_list (bond_code, bond_name, market, is_active)
-        VALUES (%s, %s, %s, 1)
+        INSERT INTO bond_list (bond_code, bond_name, market, is_active, created_at, updated_at)
+        VALUES (%s, %s, %s, 1, %s, %s)
         ON DUPLICATE KEY UPDATE
             bond_name = VALUES(bond_name),
             market = VALUES(market),
-            updated_at = CURRENT_DATE
+            updated_at = VALUES(updated_at)
     """
 
     inserted = 0
@@ -76,7 +77,7 @@ def import_from_csv(conn, csv_path: str):
         market = str(row.get("市场", "")).strip() if row.get("市场") else ""
 
         try:
-            cur.execute(sql, (bond_code, bond_name, market))
+            cur.execute(sql, (bond_code, bond_name, market, today, today))
             if cur.rowcount == 1:
                 inserted += 1
             else:

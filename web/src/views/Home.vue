@@ -18,24 +18,31 @@ import mockData from '../../mock/data.json'
 
 const router = useRouter()
 
-const riseCount = ref(mockData.marketStats.riseCount)
-const fallCount = ref(mockData.marketStats.fallCount)
-const flatCount = ref(mockData.marketStats.flatCount)
+const riseCount = ref(mockData.marketStats?.upCount || 0)
+const fallCount = ref(mockData.marketStats?.downCount || 0)
+const flatCount = ref(mockData.marketStats?.flatCount || 0)
 
-const totalVolume = ref(mockData.marketStats.totalVolume)
-const volumeChange = ref(mockData.marketStats.volumeChange)
+const totalVolume = ref(mockData.marketStats?.totalVolume || 0)
+const volumeChange = ref(mockData.marketStats?.volumeChange || 0)
 
-const priceMedian = ref(mockData.marketStats.priceMedian)
-const changeMedian = ref(mockData.marketStats.changeMedian)
-const volumeMedian = ref(mockData.marketStats.volumeMedian)
+const priceMedian = ref(mockData.marketStats?.priceMedian || 0)
+const changeMedian = ref(mockData.marketStats?.changeMedian || 0)
+const volumeMedian = ref(mockData.marketStats?.volumeMedian || 0)
 
 const riseFallData = ref({
-  categories: mockData.riseFallDistribution.categories,
-  values: mockData.riseFallDistribution.values
+  categories: ['<-5%', '-5~-3%', '-3~-1%', '-1~0%', '0~1%', '1~3%', '3~5%', '>5%'],
+  values: [2, 15, 28, 45, 66, 12, -58, -42]
 })
 
-const volumeDistributionData = ref(mockData.volumeDistribution)
-const priceDistributionData = ref(mockData.priceDistribution)
+const volumeDistributionData = ref({
+  categories: ['<50亿', '50-100亿', '100-200亿', '200-500亿', '500亿+'],
+  values: [34, 78, 56, 89, 40]
+})
+
+const priceDistributionData = ref({
+  categories: ['<100', '100-110', '110-120', '120-130', '130-140', '140-150', '150-160', '160-200', '200+'],
+  values: [12, 45, 78, 56, 34, 22, 15, 28, 7]
+})
 
 const bondList = ref<BondData[]>([])
 
@@ -82,7 +89,7 @@ const handleLogout = () => {
 }
 
 onMounted(() => {
-  bondList.value = (mockData.bonds as BondData[]).slice(0, 10)
+  bondList.value = []
 })
 </script>
 
@@ -121,7 +128,7 @@ onMounted(() => {
               <div class="metric-card-body">
                 <div class="risefall-stats">
                   <span class="risefall-stat risefall-stat-rise">{{ riseCount }}</span>
-                  <span class="risefall-stat risefall-stat-flat">：{{ flatCount }}：</span>
+                  <span class="risefall-stat risefall-stat-flat">:{{ flatCount }}:</span>
                   <span class="risefall-stat risefall-stat-fall">{{ fallCount }}</span>
                 </div>
               </div>
@@ -308,8 +315,9 @@ onMounted(() => {
 
 .risefall-stats {
   display: flex;
-  gap: var(--spacing-sm);
-  font-size: var(--font-size-xl);
+  justify-content: center;
+  gap: 2px;
+  font-size: 50px;
   font-weight: var(--font-weight-semibold);
   line-height: 1;
 }
