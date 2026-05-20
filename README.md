@@ -113,7 +113,8 @@ Affair.parse(downdir='tmp')
 
 加微信交流
 ----------
-加微信交流
+
+加微信交流
 ----------
 
 ![](docs/img/IMG_2851.JPG)
@@ -490,6 +491,46 @@ marketStats 扩展字段：
 - `volumeDistribution` — 成交额区间分布
 - `priceDistribution` — 价格区间分布（左开右闭）
 
+#### 可转债双超卖检测 + 数据采集全流程工具链（2026-05-20）
+
+**新增云函数 `cb_oversold_detector`：**
+
+基于 CCI（商品通道指数）+ WR（威廉指标）双指标检测可转债超卖信号：
+- CCI < -100 且 WR > -20 时触发超卖信号
+- 自动查询 CloudBase MySQL 获取全量可转债日 K 线数据
+- 计算最近 14 日 CCI 和 WR 指标值
+- 通过飞书机器人推送检测结果通知
+
+**新增采集脚本：**
+
+| 脚本 | 用途 |
+|------|------|
+| `scripts/fetch_and_save_snapshot.py` | 从新浪财经采集可转债行情快照并写入数据库 |
+| `scripts/init_bond_list.py` | 初始化 bond_list 集合，建立转债代码索引 |
+| `scripts/collect_and_import.py` | F10 静态数据采集 + 入库（增量更新支持） |
+
+**云函数优化：**
+- `cb_snapshot_updater` 新增 bond_list 增量更新逻辑
+- 完善行情更新流程，支持断点续传
+
+**文档：**
+- 新增《CloudBase 部署说明》
+- 新增《全流程说明》文档
+
+#### 前端页面重构 + 后端脚本优化（2026-05-20）
+
+**前端重构：**
+- `Scatter.vue` 重构为表格展示 CCI+WR 超卖策略数据（CCI、WR 值、价格、评级等）
+- `Heatmap.vue` 重构为行业数据表格展示（行业名称、转债数量、平均价格、平均涨幅）
+- 更新导航标签（NavTabs）和底部导航（BottomNav）文字
+- 全局滚动条样式优化
+- `Home.vue` 页面数据处理和样式优化
+- 配置 Vite 代理到本地 3000 端口（`/api` 路径代理）
+
+**后端优化：**
+- 更新数据库表结构和初始化脚本
+- 简化 mock 数据结构
+
 ### 开发命令
 
 ```bash
@@ -499,5 +540,82 @@ npm run dev          # 启动开发服务器
 npm run build        # 构建生产版本
 npm run typecheck    # TypeScript 类型检查
 npm run lint         # ESLint 检查
+```
+
+---
+
+## 下一步工作
+
+### 1. 搭建后端 API 服务（核心缺失项）
+
+目前前端直接使用 `mock/data.json` 模拟数据，需要开发真正的后端 API 服务对接 CloudBase MySQL。
+
+**推荐技术选型：**
+- **Node.js + Express**：与现有云函数（Node.js）技术栈保持一致，复用 `mysql2` 依赖
+- **Python + FastAPI**：与现有采集脚本（Python）技术栈一致
+
+**需要实现的核心接口：**
+
+| 接口 | 用途 | 数据源 |
+|------|------|--------|
+| `GET /api/bonds` | 可转债列表（支持筛选/排序/分页） | `bond_static` + `bond_snapshot` |
+| `GET /api/market/stats` | 市场统计（涨跌分布、成交额等） | `bond_snapshot` |
+| `GET /api/market/distribution` | 区间分布数据 | `bond_snapshot` |
+| `GET /api/industries` | 行业板块数据 | `bond_static` + `bond_snapshot` |
+| `GET /api/oversold` | CCI+WR 超卖检测列表 | `bond_kline` 实时计算 |
+| `GET /api/kline/:code` | 单只转债日 K 线数据 | `bond_kline` |
+
+### 2. 前端 API 接入改造
+
+- 在 `src/api/` 下创建请求层，封装所有数据请求方法
+- 引入 HTTP 客户端（`axios` 或浏览器原生 `fetch`）
+- 改造各页面（`Home.vue`、`Scatter.vue`、`Heatmap.vue` 等）从 `import mock` 改为调用 API
+- mock 数据保留作为开发/回退备用
+
+### 3. 部署方案
+
+**前端部署：**
+
+| 方式 | 说明 |
+|------|------|
+| CloudBase 静态托管 | `npm run build` 后上传 `dist/`，自动分配 CDN 加速域名 |
+| 腾讯云 COS + CDN | 构建产物上传 COS 存储桶，开启 CDN 加速 |
+
+**后端部署：**
+
+| 方式 | 说明 |
+|------|------|
+| CloudBase Run | 容器化部署，支持弹性伸缩，与 MySQL 同生态 |
+| 轻量应用服务器 | 直接部署 Node/Python 服务，配 Nginx 反向代理 |
+
+### 4. 数据库安全加固
+
+- 创建只读数据库用户供后端 API 使用（仅 `SELECT` 权限）
+- 限制 IP 白名单，仅允许后端服务的出口 IP 访问
+- 后端配置连接池，避免频繁建连
+
+### 5. CORS 与域名配置
+
+- 后端设置 CORS 允许前端域名跨域访问
+- 统一域名分发：Nginx 反向代理 `/api` 到后端，`/` 到静态资源
+- 全站启用 HTTPS
+
+### 实施路线图
+
+```
+第1步：搭建后端 API 服务（Node.js Express 或 Python FastAPI）
+  ├── 连接 CloudBase MySQL
+  ├── 实现核心接口（bonds, market/stats, oversold）
+  └── 本地验证：启动后端，前端通过 Vite proxy 联调
+
+第2步：前端 API 接入改造
+  ├── 创建 src/api/ 请求层
+  ├── 替换各页面 mock 数据为 API 调用
+  └── 端到端联调验证所有页面
+
+第3步：部署上线
+  ├── 后端部署到 CloudBase Run / 轻量服务器
+  ├── 前端构建后部署到静态托管
+  └── 配置域名 + HTTPS + CORS
 ```
 
