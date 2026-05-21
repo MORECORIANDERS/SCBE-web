@@ -143,7 +143,7 @@ function sendFeishuNotification(bonds, elapsed) {
       return;
     }
 
-    const sortedBonds = [...bonds].sort((a, b) => a.cci - b.cci);
+    const sortedBonds = [...bonds].sort((a, b) => parseFloat(a.latest_amount || 0) - parseFloat(b.latest_amount || 0));
 
     let elementsContent = '';
 
