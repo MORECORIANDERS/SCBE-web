@@ -3,10 +3,17 @@
  * =================================
  * 触发时间：每天 15:30（收盘后）
  * 功能：
- *   1. 从 bond_kline（≤2026-05-06）和 bond_snapshot（≥2026-05-07）合并获取历史行情
- *   2. 计算 CCI 和 WR 指标
- *   3. 筛选满足双超卖条件的可转债（CCI < -100 且 WR > 80）
- *   4. 通过飞书机器人发送详细卡片（含行业、剩余规模、到期日期）
+ *   1. 从 bond_kline（静态历史库，截至2026-05-20）获取历史K线
+ *   2. 从 bond_snapshot（每日新增，2026-05-21起）获取最新行情
+ *   3. 两者按 trade_date 去重合并，取最近30天
+ *   4. 计算 CCI 和 WR 指标
+ *   5. 筛选满足双超卖条件的可转债（CCI < -100 且 WR > 80）
+ *   6. 通过飞书机器人发送详细卡片（含行业、剩余规模、到期日期）
+ *
+ * 数据源策略：
+ *   bond_kline.symbol 格式为 'sh110072'，截取后6位匹配 bond_code
+ *   - bond_kline：2018-09-04 ~ 2026-05-20（静态历史库，基本不更新）
+ *   - bond_snapshot：2026-05-21 起（每日新增行情快照）
  *
  * 指标计算（参考通达信公式）：
  *   CCI = (TYP - MA(TYP, 14)) / (0.015 * AVEDEV(TYP, 14))
@@ -30,7 +37,7 @@ const DB_CONFIG = {
 
 const CCI_PERIOD = 14;
 const WR_PERIOD = 14;
-const KLINE_CUTOFF_DATE = '2026-05-06';
+const KLINE_CUTOFF_DATE = '2026-05-20';
 
 const FEISHU_WEBHOOK = 'https://open.feishu.cn/open-apis/bot/v2/hook/ecedf7fa-9000-42bb-805c-e09d7fce5bb5';
 
@@ -66,8 +73,8 @@ async function getBondList() {
 /**
  * 数据来源说明：
  * bond_kline.symbol 格式为 'sh110072'，截取后6位匹配 bond_code
- * - bond_kline: 2026-05-06 及之前的历史K线（27万条）
- * - bond_snapshot: 2026-05-07 及之后的日行情快照（3,489条）
+ * - bond_kline: 静态历史库（2018-09-04 ~ 2026-05-20），27万条
+ * - bond_snapshot: 每日新增快照（2026-05-21起），覆盖当日数据
  * - 两者按 trade_date 去重合并，取最近30天
  */
 
@@ -252,7 +259,7 @@ async function main() {
     const [snapshotAll] = await conn.query(`
       SELECT bond_code, trade_date, high_price, low_price, price
       FROM bond_snapshot
-      WHERE trade_date >= '${KLINE_CUTOFF_DATE}'
+      WHERE trade_date > '${KLINE_CUTOFF_DATE}'
     `);
 
     const rawByBond = {};
