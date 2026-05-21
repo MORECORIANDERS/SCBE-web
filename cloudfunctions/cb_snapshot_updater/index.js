@@ -160,7 +160,7 @@ const INSERT_SNAPSHOT_SQL = `
 `;
 
 async function insertSnapshot(conn, bond) {
-  const [result] = await conn.execute(INSERT_SNAPSHOT_SQL, [
+  const [result] = await conn.query(INSERT_SNAPSHOT_SQL, [
     bond.trade_date, bond.bond_code, bond.bond_name, bond.price, bond.price_change,
     bond.change_pct, bond.volume, bond.amount, bond.settlement, bond.open_price,
     bond.high_price, bond.low_price, bond.buy_price, bond.sell_price, bond.trade_time
@@ -181,7 +181,7 @@ const INSERT_LIST_SQL = `
 `;
 
 async function insertBondList(conn, bond) {
-  const [result] = await conn.execute(INSERT_LIST_SQL, [
+  const [result] = await conn.query(INSERT_LIST_SQL, [
     bond.bond_code, bond.bond_name, bond.market
   ]);
   return result.affectedRows;
