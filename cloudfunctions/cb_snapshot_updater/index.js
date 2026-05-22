@@ -19,7 +19,8 @@ const DB_CONFIG = {
   password: 'huo22QQQ',
   database: 'python12-9guk780v324f024d',
   charset: 'utf8mb4',
-  connectTimeout: 15000,
+  connectTimeout: 30000,
+  insecureAuth: true,
 };
 
 const API_URL = 'https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData';
