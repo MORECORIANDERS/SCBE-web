@@ -1,0 +1,10 @@
+{
+  "name": "mootdx-test",
+  "version": "1.0.0",
+  "description": "mootdx test cloud function",
+  "main": "index.js",
+  "scripts": {
+    "test": "node index.js"
+  },
+  "dependencies": {}
+}
