@@ -145,3 +145,97 @@ cloudfunctions/
 └── Dockerfile
 cloudbaserc.json           # 环境: python12-9guk780v324f024d
 ```
+
+---
+
+# PyMySQL 层部署实战 — 2026-05-26
+
+## 背景
+
+`cb_volume_filter` 云函数需要 `pymysql` 连接 MySQL 数据库。通过层方式管理依赖，实现依赖复用和代码分离。
+
+## 部署过程
+
+1. **代码适配层路径**：`index.py` 中使用 `sys.path.insert(0, '/opt/python')` 引入层中的模块
+2. **构建 zip 包**：用 Python `zipfile` 模块打包，确保内部结构为 `python/pymysql/...`
+3. **手动上传到控制台**：CloudBase 控制台 → 云函数 → 层管理 → pymysql → 新建版本
+4. **绑定到函数**：`tcb fn layer bind cb_volume_filter --layer pymysql --layer-version 4`
+5. **手动触发验证**：`tcb fn invoke cb_volume_filter` → 成功筛选 12 只转债并推送飞书
+
+## zip 包构建（正确做法）
+
+```python
+import os, shutil, zipfile, subprocess
+
+base = 'tmp_layer'
+python_dir = os.path.join(base, 'python')
+out_zip = 'pymysql-layer.zip'
+
+os.makedirs(python_dir)
+subprocess.run(['pip', 'install', 'pymysql==1.1.1', '-t', python_dir, '--no-compile', '--no-deps'], check=True)
+
+# 删除无用文件
+for root, dirs, files in os.walk(python_dir, topdown=False):
+    for d in dirs:
+        if d == '__pycache__' or d.endswith('.dist-info'):
+            shutil.rmtree(os.path.join(root, d))
+
+# 用 Python zipfile，不要用 PowerShell Compress-Archive
+with zipfile.ZipFile(out_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
+    for root, dirs, files in os.walk(python_dir):
+        for f in files:
+            full_path = os.path.join(root, f)
+            arcname = os.path.relpath(full_path, base)
+            zf.write(full_path, arcname)
+```
+
+## 部署要点
+
+| 要点 | 说明 |
+|------|------|
+| zip 根目录必须是 `python/` | SCF 解压后映射到 `/opt/python/`，代码里 `sys.path.insert(0, '/opt/python')` |
+| 用 Python `zipfile` 打包 | **不要用** PowerShell `Compress-Archive`，产生的 zip 可能不兼容云平台 |
+| `--no-compile` | 不生成 `.pyc` 缓存文件，减少包体积，避免运行时兼容问题 |
+| 删除 `.dist-info` | pip 元数据目录可删除，不影响运行 |
+| 层绑定后等几秒 | 绑定操作是异步的，等函数状态变为 `Active` 再触发 |
+| 先解绑再删除重建 | 如果绑定失败导致 `UpdateFailed`，先 `unbind` 所有层再操作 |
+
+## 踩过的坑
+
+| 问题 | 原因 | 解决 |
+|------|------|------|
+| `No module named 'pymysql'` | 初始未使用层，云端未安装依赖 | 创建 pymysql 层并绑定 |
+| `InternalError` 绑定层失败 | 旧 zip 用 PowerShell `Compress-Archive` 打包，云平台不兼容 | 改用 Python `zipfile` 模块重新打包 |
+| 函数反复 `UpdateFailed` | 绑定有问题的层后函数进入错误状态 | 先解绑所有层 → 删除函数 → 重建 → 用正确 zip 重新绑定 |
+| mootdx310 层可以绑定、pymysql 不行 | 不是绑定机制问题，而是 pymysql 层的 zip 格式有问题 | 确认是 zip 打包工具导致的不兼容 |
+| CLI 返回 `InternalError`，无法定位原因 | 腾讯云内部错误信息不明确 | 对比测试（绑定 mootdx310 成功 → 确认是 pymysql 层 zip 问题） |
+
+## cloudbaserc.json 层配置
+
+```json
+{
+  "envId": "python12-9guk780v324f024d",
+  "functionRoot": "cloudfunctions",
+  "functions": [
+    {
+      "name": "cb_volume_filter",
+      "timeout": 300,
+      "memorySize": 512,
+      "runtime": "Python3.10",
+      "layers": [
+        { "name": "pymysql", "version": 4 }
+      ]
+    }
+  ]
+}
+```
+
+## CLI 常用命令
+
+```bash
+tcb fn layer list                          # 查看层列表
+tcb fn layer bind <fn> --layer <name> --layer-version <n>   # 绑定层
+tcb fn layer unbind <fn> --layer <name>    # 解绑层
+tcb fn detail <fn>                         # 查看函数详情（含层绑定状态）
+tcb fn invoke <fn>                         # 手动触发函数
+```

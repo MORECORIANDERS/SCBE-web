@@ -33,7 +33,9 @@ web/.vite
 cloudfunctions/**/vendor/
 cloudfunctions/**/__pycache__/
 cloudfunctions/**/*.pyc
-cloudfunctions/mootdx-layer/*.zip
+cloudfunctions/**/*.zip
+cloudfunctions/**/layer-*/
+cloudfunctions/layer_build/
 
 # Local cache and data files
 convertible_bond/f10_cache/
@@ -46,6 +48,12 @@ underlying_stock/*.json
 .claude/
 .trae/
 
+# Skill files (auto-generated)
+.agents/
+
 # MCP and tool logs
 *.log
 mcp_log.txt
+
+# Auto-generated lock files
+skills-lock.json

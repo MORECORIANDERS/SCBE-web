@@ -1,0 +1,18 @@
+{
+  "name": "cb_volume_filter",
+  "version": "1.0.0",
+  "description": "可转债成交量异动筛选 - 每天15:50触发，筛选成交额是前5日均值2倍及以上的转债",
+  "main": "index.py",
+  "type": "python",
+  "runtime": "Python3.10",
+  "memorySize": 512,
+  "timeout": 300,
+  "envVariables": {},
+  "triggers": [
+    {
+      "name": "daily_volume_filter",
+      "type": "timer",
+      "config": "0 50 15 * * * *"
+    }
+  ]
+}

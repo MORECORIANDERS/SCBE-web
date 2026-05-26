@@ -13,6 +13,18 @@
           "version": 1
         }
       ]
+    },
+    {
+      "name": "cb_volume_filter",
+      "timeout": 300,
+      "memorySize": 512,
+      "runtime": "Python3.10",
+      "layers": [
+        {
+          "name": "pymysql",
+          "version": 3
+        }
+      ]
     }
   ]
 }
