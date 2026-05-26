@@ -1,3 +1,200 @@
+# 云函数总览 — 2026-05-26
+
+## 全部云函数（按功能分类）
+
+| 函数名 | 运行时 | 触发逻辑 | 核心功能 |
+|--------|--------|----------|----------|
+| `cb_snapshot_updater` | Node.js | **每天 15:10**（周一至周五） | 从新浪财经获取全量可转债当日行情，入库 bond_snapshot 表；检测新增/退市转债 |
+| `cb_volume_filter` | Python3.10 | **每天 15:50**（定时） | 筛选当日成交额 ≥ 前5日均值×2的可转债，按剩余规模升序，推送飞书 |
+| `cb_oversold_detector` | Node.js | **每天 15:30**（定时） | 计算CCI+WR双超卖指标（基于日K线），筛选CCI<-100且WR>80的可转债，推送飞书 |
+| `cb_weekly_kline_mootdx` | Python3.10 | **每周五 16:00**（定时） | 通过mootdx获取全量可转债周线数据，upsert进bond_weekly_kline表 |
+| `mootdx-test` | Python3.10 | **HTTP触发器**（手动） | 飞书机器人回调验证URL + 菜单点击事件处理 + mootdx行情查询测试 |
+| `cb_oversold_detector_weekly` | Node.js | **每天 15:40**（定时） | 基于周K线计算CCI+WR双超卖指标（与日频版互为补充），筛选双超卖可转债，推送飞书 |
+| `cb_weekly_kline_init` | Node.js | **手动触发**（一次性） | 可转债周线数据初始化：建bond_weekly_kline表 + 全量历史日线聚合成周线入库 |
+| `sina_bonds_detail_collector` | Node.js | **手动触发**（增量） | 从新浪财经采集可转债详细信息（如转债条款、评级等），入库bond_detail |
+| `sina_stock_info_collector` | Python | **手动触发**（待确认） | 从新浪财经采集正股相关信息 |
+| `sina_bonds_info_collector` | Python | **手动触发**（待确认） | 从新浪财经采集可转债基础信息 |
+
+---
+
+## 核心函数详解
+
+### 1. cb_snapshot_updater（行情快照更新）
+
+```json
+{ "name": "cb_snapshot_updater", "runtime": "Node.js", "timeout": 300 }
+```
+
+- **触发**：每周一到周五 15:10（收盘后10分钟）
+- **数据源**：新浪财经行情接口
+- **目标表**：`bond_snapshot`（每日行情）、`bond_list`（转债列表）、`bond_detail`（转债详情）
+- **逻辑**：
+  1. 分页抓取全量可转债当日行情
+  2. UPSERT 到 bond_snapshot
+  3. 增量更新 bond_list（新增/退市标记 is_active=0/1）
+  4. 检测新转债自动采集详情到 bond_detail
+  5. 过滤"定01"可交换债，避免无效数据
+- **推送**：完成后飞书通知（成功/失败）
+
+### 2. cb_volume_filter（成交额异动筛选）
+
+```json
+{ "name": "cb_volume_filter", "runtime": "Python3.10", "timeout": 300, "memorySize": 512, "layers": ["pymysql:v4"] }
+```
+
+- **触发**：每天 15:50（收盘前10分钟）
+- **数据源**：bond_snapshot（MySQL）
+- **策略**：
+  1. 获取最近6个交易日（含今天）
+  2. 计算每只转债前5日日均成交额
+  3. 筛选当日成交额 ≥ 日均×2 的转债
+  4. 按剩余规模（latest_amount）升序排列
+- **返回字段**：转债名称、债券代码、行业、到期日、剩余规模、最新价、成交额（亿元）
+- **推送**：飞书卡片消息
+
+### 3. cb_oversold_detector（CCI+WR 双超卖检测）
+
+```json
+{ "name": "cb_oversold_detector", "runtime": "Node.js", "timeout": 300, "memorySize": 512 }
+```
+
+- **触发**：每天 15:30（收盘后）
+- **数据源**：`bond_kline`（历史截至2026-05-20）+ `bond_snapshot`（2026-05-21起）
+- **指标计算**：
+  - CCI(14) = (TYP - MA(TYP, 14)) / (0.015 × AVEDEV(TYP, 14))
+  - WR(14) = (HHV(HIGH, 14) - CLOSE) / (HHV(HIGH, 14) - LLV(LOW, 14)) × 100
+- **超卖条件**：CCI < -100 且 WR > 80
+- **返回字段**：转债名称、行业、剩余规模、到期日、现价、CCI值、WR值
+- **推送**：飞书卡片消息
+
+### 4. cb_weekly_kline_mootdx（周线数据采集）
+
+```json
+{ "name": "cb_weekly_kline_mootdx", "runtime": "Python3.10", "timeout": 600, "memorySize": 512, "layers": ["mootdx310:v1"] }
+```
+
+- **触发**：每周五 16:00（收盘后）
+- **数据源**：mootdx（通达信协议）
+- **目标表**：`bond_weekly_kline`
+- **模式**（通过 event 参数区分）：
+  - `init`：手动触发一次，获取全量历史周线
+  - `weekly`：定时触发，获取最近30交易日日线聚合为周线
+  - `daily`：备用模式，从 bond_kline + bond_snapshot 聚合
+- **字段**：周开/高/低/收、成交量、成交额、来源标记
+
+### 5. mootdx-test（飞书机器人回调）
+
+```json
+{ "name": "mootdx-test", "runtime": "Python3.10", "timeout": 60, "layers": ["mootdx310:v1"] }
+```
+
+- **触发**：HTTP调用（公网 URL `/test`）
+- **功能**：
+  1. **URL验证**：响应飞书 `type=url_verification` 的 challenge
+  2. **菜单回调**：处理 `application.bot.menu_v6` 事件
+  3. **行情查询**：点击菜单时调用 mootdx 查询指定债券行情
+- **注意**：package.json 中 `"main": "index.js"` 与实际 Python 代码不符，应为 `index.py`
+
+### 6. cb_oversold_detector_weekly（周K线双超卖检测）
+
+```json
+{ "name": "cb_oversold_detector_weekly", "runtime": "Node.js", "timeout": 300, "dependencies": { "mysql2": "^3.6.0" } }
+```
+
+- **触发**：每天 15:40（定时）
+- **数据源**：`bond_weekly_kline`（周线数据）
+- **指标**：与日频版相同（CCI + WR），但基于周K线计算
+  - CCI(14) = (TYP - MA(TYP, 14)) / (0.015 × AVEDEV(TYP, 14))
+  - WR(14) = (HHV(HIGH, 14) - CLOSE) / (HHV(HIGH, 14) - LLV(LOW, 14)) × 100
+- **超卖条件**：CCI < -100 且 WR > 80
+- **推送**：飞书卡片消息
+- **与日频版区别**：日频版用日K线，周频版用周K线，两者互为补充
+
+### 7. cb_weekly_kline_init（周线数据初始化）
+
+```json
+{ "name": "cb_weekly_kline_init", "runtime": "Node.js", "dependencies": { "mysql2": "^3.6.0" } }
+```
+
+- **触发**：手动一次性触发
+- **功能**：
+  1. 创建 `bond_weekly_kline` 表（如不存在）
+  2. 从 `bond_kline` 历史日线数据聚合生成全量周线
+  3. UPSERT 入库
+- **用途**：首次建立周线数据集，与 `cb_weekly_kline_mootdx` 的 `init` 模式互为替代方案
+
+### 8. sina_bonds_detail_collector（新浪债券详情采集）
+
+```json
+{ "name": "sina_bonds_detail_collector", "runtime": "Node.js", "dependencies": { "mysql2": "3.6.0" } }
+```
+
+- **触发**：手动触发（增量）
+- **数据源**：新浪财经债券详情接口
+- **目标表**：`bond_detail`
+- **逻辑**：批量采集可转债详细信息（如条款、评级、规模等），支持增量更新
+
+### 9. sina_bonds_info_collector / sina_stock_info_collector
+
+- **运行时**：Python
+- **触发**：手动触发（待确认具体触发方式）
+- **数据源**：新浪财经
+- **依赖**：`pymysql`、`db_config`（云端可能有共享配置）
+- **注意**：两个函数均引用 `from db_config import DB_CONFIG`，但本地代码中 `db_config.py` 未随 zip 下载，云端可能通过环境变量或共享层提供
+
+---
+
+## 数据库表结构
+
+| 表名 | 用途 | 主要字段 |
+|------|------|----------|
+| `bond_list` | 可转债基础列表 | bond_code, bond_name, industry, is_active |
+| `bond_static` | 可转债静态信息 | bond_code, maturity_date, remaining_scale, latest_amount |
+| `bond_snapshot` | 每日行情快照 | bond_code, trade_date, price, amount, volume |
+| `bond_weekly_kline` | 周线数据 | bond_code, trade_week, open, high, low, close, volume, amount |
+| `bond_detail` | 可转债详细信息 | bond_code, (扩展字段) |
+
+---
+
+## 定时触发器汇总
+
+| Cron 表达式 | 函数 | 说明 |
+|-------------|------|------|
+| `0 10 15 * * 1-5 *` | cb_snapshot_updater | 每天 15:10（周一至周五） |
+| `0 30 15 * * * *` | cb_oversold_detector | 每天 15:30（日K线双超卖） |
+| `0 40 15 * * * *` | cb_oversold_detector_weekly | 每天 15:40（周K线双超卖） |
+| `0 50 15 * * * *` | cb_volume_filter | 每天 15:50（成交额异动筛选） |
+| `0 0 16 * * 5 *` | cb_weekly_kline_mootdx | 每周五 16:00（mootdx周线采集） |
+
+---
+
+## 层依赖管理
+
+| 层名 | 版本 | 用途 | 关联函数 |
+|------|------|------|----------|
+| `mootdx310` | v1 | mootdx 通达信协议库 | cb_weekly_kline_mootdx, mootdx-test |
+| `pymysql` | v3/v4 | MySQL 连接驱动 | cb_volume_filter |
+
+> 注意：cb_volume_filter 的 cloudbaserc.json 中 pymysql 版本写的是 3，但实际绑定的是 v4（v3 的 zip 有问题导致绑定失败）
+
+---
+
+## 本地已补充代码的函数（共6个）
+
+> 以下函数之前在云端存在但本地无代码，现已通过 `tcb fn code download` 全部下载到本地 `cloudfunctions/` 目录。
+
+| 函数名 | 运行时 | 依赖 | 核心功能 |
+|--------|--------|------|----------|
+| `cb_oversold_detector_weekly` | Node.js | mysql2 | 基于周K线的CCI+WR双超卖检测（每天15:40），与日频版互为补充 |
+| `cb_weekly_kline_init` | Node.js | mysql2 | 周线数据一次性初始化：建bond_weekly_kline表 + 全量历史日线聚合成周线入库 |
+| `sina_bonds_detail_collector` | Node.js | mysql2 | 新浪债券详情采集，入库bond_detail |
+| `sina_stock_info_collector` | Python | pymysql | 新浪股票信息采集 |
+| `sina_bonds_info_collector` | Python | pymysql | 新浪可转债基础信息采集 |
+
+> ⚠️ `sina_stock_info_collector` 和 `sina_bonds_info_collector` 引用了 `db_config` 模块，但下载的 zip 包中未包含该文件，云端可能以其他方式提供（如环境变量或共享层）
+
+---
+
 # akshare 层部署进度记录 — 2026-05-22
 
 ## 今天做了什么
