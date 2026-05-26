@@ -1,5 +1,18 @@
 {
   "envId": "python12-9guk780v324f024d",
   "functionRoot": "cloudfunctions",
-  "functions": []
+  "functions": [
+    {
+      "name": "cb_weekly_kline_mootdx",
+      "timeout": 600,
+      "memorySize": 512,
+      "runtime": "Python3.10",
+      "layers": [
+        {
+          "name": "mootdx310",
+          "version": 1
+        }
+      ]
+    }
+  ]
 }

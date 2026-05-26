@@ -1,0 +1,24 @@
+{
+  "name": "cb_weekly_kline_mootdx",
+  "version": "1.0.0",
+  "description": "通过 mootdx（通达信协议）直接获取可转债周线数据",
+  "main": "index.py",
+  "type": "python",
+  "runtime": "Python3.10",
+  "memorySize": 512,
+  "timeout": 600,
+  "layers": [
+    {
+      "name": "mootdx310",
+      "version": 1
+    }
+  ],
+  "envVariables": {},
+  "triggers": [
+    {
+      "name": "daily_weekly_kline",
+      "type": "timer",
+      "config": "0 0 16 * * 5 *"
+    }
+  ]
+}

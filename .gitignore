@@ -28,3 +28,24 @@ dist-ssr
 web/node_modules
 web/dist
 web/.vite
+
+# CloudBase functions - Python vendor and cache
+cloudfunctions/**/vendor/
+cloudfunctions/**/__pycache__/
+cloudfunctions/**/*.pyc
+cloudfunctions/mootdx-layer/*.zip
+
+# Local cache and data files
+convertible_bond/f10_cache/
+convertible_bond/*.json
+convertible_bond/*.csv
+convertible_bond/*.xlsx
+underlying_stock/*.json
+
+# IDE local settings
+.claude/
+.trae/
+
+# MCP and tool logs
+*.log
+mcp_log.txt
