@@ -12,11 +12,11 @@
 const mysql = require('mysql2/promise');
 
 const DB_CONFIG = {
-  host: 'sh-cynosdbmysql-grp-3bg1w6t8.sql.tencentcdb.com',
-  port: 27120,
-  user: 'cbreport',
-  password: 'huo22QQQ',
-  database: 'python12-9guk780v324f024d',
+  host: process.env.DB_HOST || 'sh-cynosdbmysql-grp-3bg1w6t8.sql.tencentcdb.com',
+  port: parseInt(process.env.DB_PORT || '27120'),
+  user: process.env.DB_USER || 'cbreport',
+  password: process.env.DB_PASSWORD || 'huo22QQQ',
+  database: process.env.DB_NAME || 'python12-9guk780v324f024d',
   charset: 'utf8mb4',
   connectTimeout: 60000,
 };

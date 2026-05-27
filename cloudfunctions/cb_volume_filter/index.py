@@ -18,29 +18,40 @@ from pathlib import Path
 sys.path.insert(0, '/opt/python')
 
 DB_CONFIG = {
-    'host': 'sh-cynosdbmysql-grp-3bg1w6t8.sql.tencentcdb.com',
-    'port': 27120,
-    'user': 'cbreport',
-    'password': 'huo22QQQ',
-    'database': 'python12-9guk780v324f024d',
+    'host': os.environ.get('DB_HOST', 'sh-cynosdbmysql-grp-3bg1w6t8.sql.tencentcdb.com'),
+    'port': int(os.environ.get('DB_PORT', '27120')),
+    'user': os.environ.get('DB_USER', 'cbreport'),
+    'password': os.environ.get('DB_PASSWORD', 'huo22QQQ'),
+    'database': os.environ.get('DB_NAME', 'python12-9guk780v324f024d'),
     'charset': 'utf8mb4',
     'connect_timeout': 30,
 }
 
-FEISHU_WEBHOOK = 'https://open.feishu.cn/open-apis/bot/v2/hook/ecedf7fa-9000-42bb-805c-e09d7fce5bb5'
+FEISHU_WEBHOOK = os.environ.get('FEISHU_WEBHOOK', 'https://open.feishu.cn/open-apis/bot/v2/hook/ecedf7fa-9000-42bb-805c-e09d7fce5bb5')
 
-HISTORY_QUERY_SQL = """
-SELECT 
-    bond_code,
-    AVG(amount) AS avg_amount_5d
-FROM (
-    SELECT bond_code, amount
+FILTER_SQL = """
+SELECT
+    s.bond_code,
+    s.bond_name,
+    COALESCE(st.industry_all, '') AS industry,
+    COALESCE(st.maturity_date, '') AS maturity_date,
+    COALESCE(st.latest_amount, 0) AS latest_amount,
+    s.price,
+    s.amount,
+    s.amount / 100000000 AS amount_yi
+FROM bond_snapshot s
+LEFT JOIN bond_static st ON s.bond_code = st.bond_code
+JOIN (
+    SELECT bond_code, AVG(amount) AS avg_amount_5d
     FROM bond_snapshot
-    WHERE trade_date <= %s
-      AND trade_date >= %s
+    WHERE trade_date >= %s AND trade_date < %s
       AND amount > 0
-) t
-GROUP BY bond_code
+    GROUP BY bond_code
+) hist ON s.bond_code = hist.bond_code
+WHERE s.trade_date = %s
+  AND s.amount >= hist.avg_amount_5d * 2
+  AND hist.avg_amount_5d > 0
+ORDER BY st.latest_amount ASC
 """
 
 
@@ -49,77 +60,36 @@ def get_db_connection():
     return pymysql.connect(**DB_CONFIG)
 
 
-def get_trading_days(conn, n=6):
-    """获取最近 n 个交易日（包含今天）"""
+def filter_volume_anomalies(conn, today):
+    """单条 SQL 筛选成交额异动转债（替代原 N+1 方式）"""
     cur = conn.cursor()
-    sql = """
-        SELECT DISTINCT trade_date
-        FROM bond_snapshot
-        WHERE trade_date <= %s
-        ORDER BY trade_date DESC
-        LIMIT %s
-    """
-    today = datetime.now().date()
-    cur.execute(sql, (today, n))
+    # 取前5个交易日（不含今天）作为基准
+    cur.execute("""
+        SELECT DISTINCT trade_date FROM bond_snapshot
+        WHERE trade_date < %s ORDER BY trade_date DESC LIMIT 5
+    """, (today,))
+    hist_days = cur.fetchall()
+    if len(hist_days) < 3:
+        return []
+
+    five_days_ago = hist_days[-1][0]
+
+    cur.execute(FILTER_SQL, (five_days_ago, today, today))
     rows = cur.fetchall()
     cur.close()
-    return [r[0] for r in rows]
 
-
-def get_hist_avg_amounts(conn, trading_days):
-    """获取前5日（不含今天）的平均成交额"""
-    if len(trading_days) < 2:
-        return {}
-    today = trading_days[0]
-    five_days_ago = trading_days[-1]
-
-    cur = conn.cursor()
-    cur.execute(HISTORY_QUERY_SQL, (today, five_days_ago))
-    rows = cur.fetchall()
-    cur.close()
-    return {r[0]: float(r[1]) for r in rows}
-
-
-def filter_bonds(conn, today, avg_amounts):
-    """筛选成交额异动转债"""
-    cur = conn.cursor()
     results = []
+    for row in rows:
+        results.append({
+            'bond_code': row[0],
+            'bond_name': row[1],
+            'industry': str(row[2] or '未知'),
+            'maturity_date': str(row[3]) if row[3] else '未知',
+            'remaining_scale': float(row[4]) if row[4] else 0,
+            'price': float(row[5]) if row[5] else 0,
+            'amount_yi': round(float(row[7]), 4) if row[7] else 0
+        })
 
-    for bond_code, avg_amount in avg_amounts.items():
-        if avg_amount <= 0:
-            continue
-        threshold = avg_amount * 2
-        cur.execute("""
-            SELECT 
-                s.bond_code,
-                s.bond_name,
-                st.industry_all,
-                st.maturity_date,
-                st.latest_amount,
-                s.price,
-                s.amount,
-                s.amount / 100000000 AS amount_yi
-            FROM bond_snapshot s
-            LEFT JOIN bond_static st ON s.bond_code = st.bond_code
-            WHERE s.trade_date = %s
-              AND s.bond_code = %s
-              AND s.amount >= %s
-            ORDER BY st.latest_amount ASC
-        """, (today, bond_code, threshold))
-        row = cur.fetchone()
-        if row:
-            results.append({
-                'bond_code': row[0],
-                'bond_name': row[1],
-                'industry': row[2] or '未知',
-                'maturity_date': str(row[3]) if row[3] else '未知',
-                'remaining_scale': float(row[4]) if row[4] else 0,
-                'price': float(row[5]) if row[5] else 0,
-                'amount_yi': round(float(row[7]), 4) if row[7] else 0
-            })
-
-    cur.close()
-    results.sort(key=lambda x: x['remaining_scale'])
     return results
 
 
@@ -192,18 +162,7 @@ def main(event, context):
         today = datetime.now().date()
         today_str = today.strftime('%Y-%m-%d')
 
-        trading_days = get_trading_days(conn, n=6)
-        if len(trading_days) < 2:
-            print('[cb_volume_filter] 历史数据不足，跳过')
-            return {'success': False, 'message': '历史数据不足'}
-
-        avg_amounts = get_hist_avg_amounts(conn, trading_days)
-        if not avg_amounts:
-            print('[cb_volume_filter] 无法获取历史平均成交额')
-            return {'success': False, 'message': '历史数据为空'}
-
-        results = filter_bonds(conn, today, avg_amounts)
-
+        results = filter_volume_anomalies(conn, today)
         conn.close()
 
         print(f'[cb_volume_filter] 筛选结果: {len(results)} 只转债')

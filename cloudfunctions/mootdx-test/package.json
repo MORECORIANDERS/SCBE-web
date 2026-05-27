@@ -2,7 +2,7 @@
   "name": "mootdx-test",
   "version": "1.0.0",
   "description": "mootdx test cloud function",
-  "main": "index.js",
+  "main": "index.py",
   "scripts": {
     "test": "node index.js"
   },

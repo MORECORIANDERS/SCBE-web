@@ -3,6 +3,48 @@
   "functionRoot": "cloudfunctions",
   "functions": [
     {
+      "name": "cb_snapshot_updater",
+      "timeout": 120,
+      "memorySize": 256,
+      "runtime": "Nodejs18.15",
+      "envVariables": {
+        "DB_HOST": "sh-cynosdbmysql-grp-3bg1w6t8.sql.tencentcdb.com",
+        "DB_PORT": "27120",
+        "DB_USER": "cbreport",
+        "DB_PASSWORD": "huo22QQQ",
+        "DB_NAME": "python12-9guk780v324f024d",
+        "FEISHU_WEBHOOK": "https://open.feishu.cn/open-apis/bot/v2/hook/ecedf7fa-9000-42bb-805c-e09d7fce5bb5"
+      }
+    },
+    {
+      "name": "cb_oversold_detector",
+      "timeout": 120,
+      "memorySize": 256,
+      "runtime": "Nodejs18.15",
+      "envVariables": {
+        "DB_HOST": "sh-cynosdbmysql-grp-3bg1w6t8.sql.tencentcdb.com",
+        "DB_PORT": "27120",
+        "DB_USER": "cbreport",
+        "DB_PASSWORD": "huo22QQQ",
+        "DB_NAME": "python12-9guk780v324f024d",
+        "FEISHU_WEBHOOK": "https://open.feishu.cn/open-apis/bot/v2/hook/ecedf7fa-9000-42bb-805c-e09d7fce5bb5"
+      }
+    },
+    {
+      "name": "cb_oversold_detector_weekly",
+      "timeout": 120,
+      "memorySize": 256,
+      "runtime": "Nodejs18.15",
+      "envVariables": {
+        "DB_HOST": "sh-cynosdbmysql-grp-3bg1w6t8.sql.tencentcdb.com",
+        "DB_PORT": "27120",
+        "DB_USER": "cbreport",
+        "DB_PASSWORD": "huo22QQQ",
+        "DB_NAME": "python12-9guk780v324f024d",
+        "FEISHU_WEBHOOK": "https://open.feishu.cn/open-apis/bot/v2/hook/ecedf7fa-9000-42bb-805c-e09d7fce5bb5"
+      }
+    },
+    {
       "name": "cb_weekly_kline_mootdx",
       "timeout": 600,
       "memorySize": 512,
@@ -12,7 +54,15 @@
           "name": "mootdx310",
           "version": 1
         }
-      ]
+      ],
+      "envVariables": {
+        "DB_HOST": "sh-cynosdbmysql-grp-3bg1w6t8.sql.tencentcdb.com",
+        "DB_PORT": "27120",
+        "DB_USER": "cbreport",
+        "DB_PASSWORD": "huo22QQQ",
+        "DB_NAME": "python12-9guk780v324f024d",
+        "FEISHU_WEBHOOK": "https://open.feishu.cn/open-apis/bot/v2/hook/ecedf7fa-9000-42bb-805c-e09d7fce5bb5"
+      }
     },
     {
       "name": "cb_volume_filter",
@@ -24,7 +74,15 @@
           "name": "pymysql",
           "version": 3
         }
-      ]
+      ],
+      "envVariables": {
+        "DB_HOST": "sh-cynosdbmysql-grp-3bg1w6t8.sql.tencentcdb.com",
+        "DB_PORT": "27120",
+        "DB_USER": "cbreport",
+        "DB_PASSWORD": "huo22QQQ",
+        "DB_NAME": "python12-9guk780v324f024d",
+        "FEISHU_WEBHOOK": "https://open.feishu.cn/open-apis/bot/v2/hook/ecedf7fa-9000-42bb-805c-e09d7fce5bb5"
+      }
     }
   ]
 }

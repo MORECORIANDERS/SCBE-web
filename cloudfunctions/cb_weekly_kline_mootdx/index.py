@@ -24,16 +24,16 @@ from mootdx.quotes import Quotes
 # ============ 配置 ============
 
 DB_CONFIG = {
-    'host': 'sh-cynosdbmysql-grp-3bg1w6t8.sql.tencentcdb.com',
-    'port': 27120,
-    'user': 'cbreport',
-    'password': 'huo22QQQ',
-    'database': 'python12-9guk780v324f024d',
+    'host': os.environ.get('DB_HOST', 'sh-cynosdbmysql-grp-3bg1w6t8.sql.tencentcdb.com'),
+    'port': int(os.environ.get('DB_PORT', '27120')),
+    'user': os.environ.get('DB_USER', 'cbreport'),
+    'password': os.environ.get('DB_PASSWORD', 'huo22QQQ'),
+    'database': os.environ.get('DB_NAME', 'python12-9guk780v324f024d'),
     'charset': 'utf8mb4',
     'connect_timeout': 30,
 }
 
-FEISHU_WEBHOOK = 'https://open.feishu.cn/open-apis/bot/v2/hook/ecedf7fa-9000-42bb-805c-e09d7fce5bb5'
+FEISHU_WEBHOOK = os.environ.get('FEISHU_WEBHOOK', 'https://open.feishu.cn/open-apis/bot/v2/hook/ecedf7fa-9000-42bb-805c-e09d7fce5bb5')
 
 CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS bond_weekly_kline (
@@ -233,7 +233,11 @@ def get_weekly_boundaries() -> tuple[str, str]:
 
 
 def build_kline_agg_sql(has_open: bool, has_volume: bool, has_amount: bool) -> str:
-    """动态构建 bond_kline 聚合 SQL（适配不同表结构）"""
+    """动态构建 bond_kline 聚合 SQL（适配不同表结构）
+
+    字段名取值仅由布尔值控制（从 INFORMATION_SCHEMA 查询结果决定），
+    使用硬编码字符串拼接，无外部输入注入风险。
+    """
     open_field = 'MIN(open) AS open' if has_open else '0 AS open'
     volume_field = 'SUM(volume) AS volume' if has_volume else '0 AS volume'
     amount_field = 'SUM(amount) AS amount' if has_amount else '0 AS amount'
