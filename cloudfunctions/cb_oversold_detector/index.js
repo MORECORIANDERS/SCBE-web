@@ -41,33 +41,54 @@ const KLINE_CUTOFF_DATE = '2026-05-20';
 
 const FEISHU_WEBHOOK = 'https://open.feishu.cn/open-apis/bot/v2/hook/ecedf7fa-9000-42bb-805c-e09d7fce5bb5';
 
+const RETRYABLE_ERROR_CODES = ['ER_MALFORMED_PACKET', 'PROTOCOL_CONNECTION_LOST', 'ECONNRESET', 'ETIMEDOUT', 'EPIPE'];
+
+/**
+ * 带自动重试的数据库查询
+ * CynosDB 偶发 ER_MALFORMED_PACKET（errno 1835），重试 2 次即可恢复
+ */
+async function queryWithRetry(queryFn, maxRetries = 2) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await queryFn();
+    } catch (e) {
+      const isRetryable = RETRYABLE_ERROR_CODES.includes(e.code);
+      if (attempt < maxRetries && isRetryable) {
+        console.warn(`[重试 ${attempt + 1}/${maxRetries}] 数据库错误: ${e.code} - ${e.message}`);
+        await new Promise(r => setTimeout(r, (attempt + 1) * 1000));
+        continue;
+      }
+      throw e;
+    }
+  }
+}
+
 /**
  * 获取活跃可转债列表（含行业、剩余规模、到期日期）
  */
 async function getBondList() {
-  const mysql = require('mysql2/promise');
-  let conn;
-  try {
-    conn = await mysql.createConnection(DB_CONFIG);
-    const [rows] = await conn.query(`
-      SELECT
-        bl.bond_code,
-        bl.bond_name,
-        COALESCE(bs.industry_level1, '') AS industry,
-        COALESCE(bs.latest_amount, 0) AS latest_amount,
-        COALESCE(bs.maturity_date, '') AS maturity_date
-      FROM bond_list bl
-      LEFT JOIN bond_static bs ON bl.bond_code = bs.bond_code
-      WHERE bl.is_active = 1
-      ORDER BY bl.bond_code
-    `);
-    return rows;
-  } catch (e) {
-    console.error('Database query error:', e.message);
-    return [];
-  } finally {
-    if (conn) await conn.end();
-  }
+  return queryWithRetry(async () => {
+    const mysql = require('mysql2/promise');
+    let conn;
+    try {
+      conn = await mysql.createConnection(DB_CONFIG);
+      const [rows] = await conn.query(`
+        SELECT
+          bl.bond_code,
+          bl.bond_name,
+          COALESCE(bs.industry_level1, '') AS industry,
+          COALESCE(bs.latest_amount, 0) AS latest_amount,
+          COALESCE(bs.maturity_date, '') AS maturity_date
+        FROM bond_list bl
+        LEFT JOIN bond_static bs ON bl.bond_code = bs.bond_code
+        WHERE bl.is_active = 1
+        ORDER BY bl.bond_code
+      `);
+      return rows;
+    } finally {
+      if (conn) await conn.end();
+    }
+  });
 }
 
 /**
@@ -245,22 +266,29 @@ async function main() {
 
   console.log('Batch loading kline data from bond_kline...');
   const mysql = require('mysql2/promise');
-  let conn;
-  try {
-    conn = await mysql.createConnection(DB_CONFIG);
 
-    const [klineAll] = await conn.query(`
-      SELECT SUBSTRING(symbol, 3) AS bond_code, trade_date, high, low, \`close\`
-      FROM bond_kline
-      WHERE trade_date >= DATE_SUB('${KLINE_CUTOFF_DATE}', INTERVAL 30 DAY)
-        AND trade_date <= '${KLINE_CUTOFF_DATE}'
-    `);
+  const { klineAll, snapshotAll } = await queryWithRetry(async () => {
+    let conn;
+    try {
+      conn = await mysql.createConnection(DB_CONFIG);
+      const [klineAll] = await conn.query(`
+        SELECT SUBSTRING(symbol, 3) AS bond_code, trade_date, high, low, \`close\`
+        FROM bond_kline
+        WHERE trade_date >= DATE_SUB('${KLINE_CUTOFF_DATE}', INTERVAL 30 DAY)
+          AND trade_date <= '${KLINE_CUTOFF_DATE}'
+      `);
 
-    const [snapshotAll] = await conn.query(`
-      SELECT bond_code, trade_date, high_price, low_price, price
-      FROM bond_snapshot
-      WHERE trade_date > '${KLINE_CUTOFF_DATE}'
-    `);
+      const [snapshotAll] = await conn.query(`
+        SELECT bond_code, trade_date, high_price, low_price, price
+        FROM bond_snapshot
+        WHERE trade_date > '${KLINE_CUTOFF_DATE}'
+      `);
+
+      return { klineAll, snapshotAll };
+    } finally {
+      if (conn) await conn.end();
+    }
+  });
 
     const rawByBond = {};
 
@@ -363,9 +391,6 @@ async function main() {
       oversoldBonds: oversoldBonds.slice(0, 20),
       elapsed: elapsed,
     };
-  } finally {
-    if (conn) await conn.end();
-  }
 }
 
 exports.main = async (event, context) => {

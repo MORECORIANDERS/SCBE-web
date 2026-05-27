@@ -5,11 +5,11 @@
 | 函数名 | 运行时 | 触发逻辑 | 核心功能 |
 |--------|--------|----------|----------|
 | `cb_snapshot_updater` | Node.js | **每天 15:10**（周一至周五） | 从新浪财经获取全量可转债当日行情，入库 bond_snapshot 表；检测新增/退市转债 |
-| `cb_volume_filter` | Python3.10 | **每天 15:50**（定时） | 筛选当日成交额 ≥ 前5日均值×2的可转债，按剩余规模升序，推送飞书 |
-| `cb_oversold_detector` | Node.js | **每天 15:30**（定时） | 计算CCI+WR双超卖指标（基于日K线），筛选CCI<-100且WR>80的可转债，推送飞书 |
+| `cb_volume_filter` | Python3.10 | **每天 15:50（周一至周五）** | 筛选当日成交额 ≥ 前5日均值×2的可转债，按剩余规模升序，推送飞书 |
+| `cb_oversold_detector` | Node.js | **每天 15:30（周一至周五）** | 计算CCI+WR双超卖指标（基于日K线），筛选CCI<-100且WR>80的可转债，推送飞书 |
 | `cb_weekly_kline_mootdx` | Python3.10 | **每周五 16:00**（定时） | 通过mootdx获取全量可转债周线数据，upsert进bond_weekly_kline表 |
 | `mootdx-test` | Python3.10 | **HTTP触发器**（手动） | 飞书机器人回调验证URL + 菜单点击事件处理 + mootdx行情查询测试 |
-| `cb_oversold_detector_weekly` | Node.js | **每天 15:40**（定时） | 基于周K线计算CCI+WR双超卖指标（与日频版互为补充），筛选双超卖可转债，推送飞书 |
+| `cb_oversold_detector_weekly` | Node.js | **每天 15:40（周一至周五）** | 基于周K线计算CCI+WR双超卖指标（与日频版互为补充），筛选双超卖可转债，推送飞书 |
 | `cb_weekly_kline_init` | Node.js | **手动触发**（一次性） | 可转债周线数据初始化：建bond_weekly_kline表 + 全量历史日线聚合成周线入库 |
 | `sina_bonds_detail_collector` | Node.js | **手动触发**（增量） | 从新浪财经采集可转债详细信息（如转债条款、评级等），入库bond_detail |
 | `sina_stock_info_collector` | Python | **手动触发**（待确认） | 从新浪财经采集正股相关信息 |
@@ -161,9 +161,9 @@
 | Cron 表达式 | 函数 | 说明 |
 |-------------|------|------|
 | `0 10 15 * * 1-5 *` | cb_snapshot_updater | 每天 15:10（周一至周五） |
-| `0 30 15 * * * *` | cb_oversold_detector | 每天 15:30（日K线双超卖） |
-| `0 40 15 * * * *` | cb_oversold_detector_weekly | 每天 15:40（周K线双超卖） |
-| `0 50 15 * * * *` | cb_volume_filter | 每天 15:50（成交额异动筛选） |
+| `0 30 15 * * 1-5 *` | cb_oversold_detector | 每天 15:30（周一至周五，日K线双超卖） |
+| `0 40 15 * * 1-5 *` | cb_oversold_detector_weekly | 每天 15:40（周一至周五，周K线双超卖） |
+| `0 50 15 * * 1-5 *` | cb_volume_filter | 每天 15:50（周一至周五，成交额异动筛选） |
 | `0 0 16 * * 5 *` | cb_weekly_kline_mootdx | 每周五 16:00（mootdx周线采集） |
 
 ---

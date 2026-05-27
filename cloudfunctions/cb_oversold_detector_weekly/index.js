@@ -33,30 +33,47 @@ const WR_PERIOD = 14;
 
 const FEISHU_WEBHOOK = 'https://open.feishu.cn/open-apis/bot/v2/hook/ecedf7fa-9000-42bb-805c-e09d7fce5bb5';
 
-async function getBondList() {
-  const mysql = require('mysql2/promise');
-  let conn;
-  try {
-    conn = await mysql.createConnection(DB_CONFIG);
-    const [rows] = await conn.query(`
-      SELECT
-        bl.bond_code,
-        bl.bond_name,
-        COALESCE(bs.industry_level1, '') AS industry,
-        COALESCE(bs.latest_amount, 0) AS latest_amount,
-        COALESCE(bs.maturity_date, '') AS maturity_date
-      FROM bond_list bl
-      LEFT JOIN bond_static bs ON bl.bond_code = bs.bond_code
-      WHERE bl.is_active = 1
-      ORDER BY bl.bond_code
-    `);
-    return rows;
-  } catch (e) {
-    console.error('Database query error:', e.message);
-    return [];
-  } finally {
-    if (conn) await conn.end();
+const RETRYABLE_ERROR_CODES = ['ER_MALFORMED_PACKET', 'PROTOCOL_CONNECTION_LOST', 'ECONNRESET', 'ETIMEDOUT', 'EPIPE'];
+
+async function queryWithRetry(queryFn, maxRetries = 2) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await queryFn();
+    } catch (e) {
+      const isRetryable = RETRYABLE_ERROR_CODES.includes(e.code);
+      if (attempt < maxRetries && isRetryable) {
+        console.warn(`[重试 ${attempt + 1}/${maxRetries}] 数据库错误: ${e.code} - ${e.message}`);
+        await new Promise(r => setTimeout(r, (attempt + 1) * 1000));
+        continue;
+      }
+      throw e;
+    }
   }
+}
+
+async function getBondList() {
+  return queryWithRetry(async () => {
+    const mysql = require('mysql2/promise');
+    let conn;
+    try {
+      conn = await mysql.createConnection(DB_CONFIG);
+      const [rows] = await conn.query(`
+        SELECT
+          bl.bond_code,
+          bl.bond_name,
+          COALESCE(bs.industry_level1, '') AS industry,
+          COALESCE(bs.latest_amount, 0) AS latest_amount,
+          COALESCE(bs.maturity_date, '') AS maturity_date
+        FROM bond_list bl
+        LEFT JOIN bond_static bs ON bl.bond_code = bs.bond_code
+        WHERE bl.is_active = 1
+        ORDER BY bl.bond_code
+      `);
+      return rows;
+    } finally {
+      if (conn) await conn.end();
+    }
+  });
 }
 
 function calculateMA(data, period) {
@@ -225,20 +242,26 @@ async function main() {
   console.log(`Found ${bonds.length} active bonds`);
 
   const mysql = require('mysql2/promise');
-  let conn;
-  try {
-    conn = await mysql.createConnection(DB_CONFIG);
 
-    const [weeklyAll] = await conn.query(`
-      SELECT
-        bond_code,
-        trade_week,
-        high_price AS high,
-        low_price AS low,
-        close_price AS close
-      FROM bond_weekly_kline
-      ORDER BY bond_code, trade_week
-    `);
+  const { weeklyAll } = await queryWithRetry(async () => {
+    let conn;
+    try {
+      conn = await mysql.createConnection(DB_CONFIG);
+      const [weeklyAll] = await conn.query(`
+        SELECT
+          bond_code,
+          trade_week,
+          high_price AS high,
+          low_price AS low,
+          close_price AS close
+        FROM bond_weekly_kline
+        ORDER BY bond_code, trade_week
+      `);
+      return { weeklyAll };
+    } finally {
+      if (conn) await conn.end();
+    }
+  });
 
     const weeklyByBond = {};
     for (const row of weeklyAll) {
@@ -330,9 +353,6 @@ async function main() {
       oversoldBonds: oversoldBonds.slice(0, 20),
       elapsed: elapsed,
     };
-  } finally {
-    if (conn) await conn.end();
-  }
 }
 
 exports.main = async (event, context) => {
