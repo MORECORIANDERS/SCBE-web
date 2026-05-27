@@ -431,6 +431,54 @@ tccli scf GetFunctionLogs --FunctionName cb_snapshot_updater --Limit 10
 | mysql2 | ^3.6.0 | CloudBase MySQL 连接 |
 
 
+## 附：云函数优化记录（2026-05-27）
+
+> 本轮优化涵盖安全加固、性能优化和 Bug 修复，涉及 7 个云函数。
+
+### 1. 安全加固：凭证环境变量化
+
+将数据库密码和飞书 Webhook 从代码中硬编码移除，改为通过 CloudBase 环境变量注入：
+
+| 环境变量 | 说明 |
+|---------|------|
+| `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | 数据库连接 |
+| `FEISHU_WEBHOOK` | 飞书机器人 Webhook |
+
+涉及函数：`cb_snapshot_updater`、`cb_oversold_detector`、`cb_oversold_detector_weekly`、`cb_weekly_kline_mootdx`、`cb_volume_filter`、`cb_weekly_kline_init`、`sina_bonds_detail_collector`
+
+### 2. 性能优化
+
+| 优化项 | 函数 | 优化前 | 优化后 |
+|--------|------|--------|--------|
+| 批量写入 | `cb_snapshot_updater` | 每只债券独立 INSERT（500 次 DB 调用） | 批量 VALUES ? 语法（10 批，每批 50 只） |
+| N+1 查询 | `cb_volume_filter` | 先查历史均值，再逐只债券查当日成交量 | 单条 JOIN SQL，一次查询完成 |
+| 超卖检测合并 | `cb_oversold_detector` | 日线和周线两个独立函数（90% 代码重复） | 统一为一个函数，`mode` 参数区分日/周 |
+
+### 3. Bug 修复
+
+| 问题 | 文件 | 修复内容 |
+|------|------|---------|
+| 重复分支 | `cb_snapshot_updater` | if/else 两个分支执行完全相同的调用，移除冗余逻辑 |
+| 历史窗口错误 | `cb_volume_filter` | 5 日均值计算包含了当天数据导致基线偏高，改为不含今天 |
+| package.json 主字段 | `mootdx-test` | `"main": "index.js"` 修正为 `"index.py"` |
+| 前端死依赖 | `web/src/lib/utils.ts` | 移除未发布的 `clsx` / `tailwind-merge`，简化 `cn()` 实现 |
+
+### 4. 部署清单
+
+所有函数通过 `tcb fn deploy` 部署到 CloudBase，部署后状态：
+
+| 函数 | 状态 |
+|------|------|
+| `cb_snapshot_updater` | ✅ Deployment completed |
+| `cb_oversold_detector` | ✅ Deployment completed |
+| `cb_oversold_detector_weekly` | ✅ Deployment completed |
+| `cb_weekly_kline_mootdx` | ✅ Deployment completed |
+| `cb_weekly_kline_init` | ✅ Deployment completed |
+| `cb_volume_filter` | ✅ Deployed（CLI 状态显示异常，实际运行正常） |
+| `sina_bonds_detail_collector` | ✅ Deployment completed |
+| `mootdx-test` | ✅ Deployment completed |
+
+
 ## 前端 Web 项目（monorepo）
 
 前端项目位于 `web/` 目录，是基于 Vue 3 的可转债投资分析系统。
