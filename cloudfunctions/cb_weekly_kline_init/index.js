@@ -195,19 +195,4 @@ async function main() {
   }
 }
 
-exports.main = async (event, context) => {
-  try {
-    const result = await main();
-    return {
-      code: 0,
-      message: 'success',
-      data: result,
-    };
-  } catch (e) {
-    console.error('Function error:', e);
-    return {
-      code: -1,
-      message: e.message,
-    };
-  }
-};
+exports.main = main;

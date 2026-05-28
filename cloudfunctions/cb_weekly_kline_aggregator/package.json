@@ -1,0 +1,9 @@
+{
+  "name": "cb_weekly_kline_aggregator",
+  "version": "1.0.0",
+  "description": "可转债周线聚合云函数",
+  "main": "index.js",
+  "dependencies": {
+    "mysql2": "^3.6.0"
+  }
+}
