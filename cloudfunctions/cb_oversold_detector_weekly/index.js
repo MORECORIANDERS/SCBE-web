@@ -87,8 +87,6 @@ async function loadWeeklyKlineData() {
   });
 }
 
-// ---- 指标计算 ----
-
 function calculateMA(data, period) {
   if (data.length < period) return null;
   const sum = data.slice(-period).reduce((acc, val) => acc + val, 0);
@@ -135,8 +133,6 @@ function calculateWR(klineData) {
   return ((hhv - closePrice) / (hhv - llv)) * 100;
 }
 
-// ---- 飞书通知 ----
-
 function sendFeishuNotification(bonds, elapsed) {
   return new Promise((resolve, reject) => {
     if (bonds.length === 0) {
@@ -151,6 +147,7 @@ function sendFeishuNotification(bonds, elapsed) {
       const industry = bond.industry || '-';
       const remainScale = bond.latest_amount ? `${parseFloat(bond.latest_amount).toFixed(2)}亿` : '-';
       const maturity = bond.maturity_date || '-';
+
       elementsContent += `${index + 1}. **${bond.bond_name}**（${bond.bond_code}）\n`;
       elementsContent += `   行业: ${industry} | 剩余规模: ${remainScale} | 到期: ${maturity}\n`;
       elementsContent += `   CCI: ${bond.cci.toFixed(2)} | WR: ${bond.wr.toFixed(2)} | 价格: ${bond.price}\n\n`;
@@ -177,6 +174,7 @@ function sendFeishuNotification(bonds, elapsed) {
       hostname: url.hostname, path: url.pathname, method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
     };
+
     const req = https.request(options, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
