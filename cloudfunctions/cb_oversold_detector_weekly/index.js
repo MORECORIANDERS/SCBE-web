@@ -74,9 +74,9 @@ async function loadWeeklyKlineData() {
       conn = await mysql.createConnection(DB_CONFIG);
       const [weeklyAll] = await conn.query(`
         SELECT bond_code, trade_week,
-          COALESCE(high_price, high) AS high,
-          COALESCE(low_price, low) AS low,
-          COALESCE(close_price, \`close\`) AS close
+          high_price AS high,
+          low_price AS low,
+          close_price AS close
         FROM bond_weekly_kline
         ORDER BY bond_code, trade_week
       `);
