@@ -1,4 +1,4 @@
-# 云函数总览 — 2026-05-26
+# 云函数总览 — 2026-05-29
 
 ## 全部云函数（按功能分类）
 
@@ -58,14 +58,16 @@
 { "name": "cb_oversold_detector", "runtime": "Node.js", "timeout": 300, "memorySize": 512 }
 ```
 
-- **触发**：每天 15:30（收盘后）
+- **触发**：每天 15:30（周一至周五，收盘后）
 - **数据源**：`bond_kline`（历史截至2026-05-20）+ `bond_snapshot`（2026-05-21起）
 - **指标计算**：
   - CCI(14) = (TYP - MA(TYP, 14)) / (0.015 × AVEDEV(TYP, 14))
   - WR(14) = (HHV(HIGH, 14) - CLOSE) / (HHV(HIGH, 14) - LLV(LOW, 14)) × 100
 - **超卖条件**：CCI < -100 且 WR > 80
 - **返回字段**：转债名称、行业、剩余规模、到期日、现价、CCI值、WR值
+- **重试机制**：对 CynosDB 偶发 `ER_MALFORMED_PACKET`（errno 1835）等瞬态错误自动重试 2 次（1s / 2s 退避）
 - **推送**：飞书卡片消息
+- **典型结果**：330 只活跃转债，处理约 320 只，失败约 10 只（数据不足），双超卖约 100~140 只
 
 ### 4. cb_weekly_kline_mootdx（周线数据采集）
 
@@ -101,14 +103,16 @@
 { "name": "cb_oversold_detector_weekly", "runtime": "Node.js", "timeout": 300, "dependencies": { "mysql2": "^3.6.0" } }
 ```
 
-- **触发**：每天 15:40（定时）
+- **触发**：每天 15:40（周一至周五，定时）
 - **数据源**：`bond_weekly_kline`（周线数据）
+- **SQL 列名修复**：表列为 `high_price / low_price / close_price`，代码中用 `AS high / AS low / AS close` 别名映射（2026-05-29 修复此前 `COALESCE(high_price, high)` 引用不存在列导致的 `Unknown column 'high'` 错误）
 - **指标**：与日频版相同（CCI + WR），但基于周K线计算
   - CCI(14) = (TYP - MA(TYP, 14)) / (0.015 × AVEDEV(TYP, 14))
   - WR(14) = (HHV(HIGH, 14) - CLOSE) / (HHV(HIGH, 14) - LLV(LOW, 14)) × 100
 - **超卖条件**：CCI < -100 且 WR > 80
+- **重试机制**：同 `cb_oversold_detector`，对 CynosDB 瞬态错误自动重试 2 次
 - **推送**：飞书卡片消息
-- **与日频版区别**：日频版用日K线，周频版用周K线，两者互为补充
+- **典型结果**：330 只活跃转债，处理约 320 只，失败约 10 只（数据不足14周），双超卖约 100~110 只
 
 ### 7. cb_weekly_kline_init（周线数据初始化）
 
@@ -173,9 +177,7 @@
 | 层名 | 版本 | 用途 | 关联函数 |
 |------|------|------|----------|
 | `mootdx310` | v1 | mootdx 通达信协议库 | cb_weekly_kline_mootdx, mootdx-test |
-| `pymysql` | v3/v4 | MySQL 连接驱动 | cb_volume_filter |
-
-> 注意：cb_volume_filter 的 cloudbaserc.json 中 pymysql 版本写的是 3，但实际绑定的是 v4（v3 的 zip 有问题导致绑定失败）
+| `pymysql` | v3 | MySQL 连接驱动 | cb_volume_filter |
 
 ---
 
