@@ -152,11 +152,35 @@
 
 | 表名 | 用途 | 主要字段 |
 |------|------|----------|
-| `bond_list` | 可转债基础列表 | bond_code, bond_name, industry, is_active |
-| `bond_static` | 可转债静态信息 | bond_code, maturity_date, remaining_scale, latest_amount |
-| `bond_snapshot` | 每日行情快照 | bond_code, trade_date, price, amount, volume |
-| `bond_weekly_kline` | 周线数据 | bond_code, trade_week, open, high, low, close, volume, amount |
-| `bond_detail` | 可转债详细信息 | bond_code, (扩展字段) |
+| `bond_list` | 可转债基础列表 | bond_code, bond_name, market, is_active, created_at, updated_at |
+| `bond_static` | 可转债静态信息 | bond_code, maturity_date, remaining_scale, latest_amount 等 |
+| `bond_snapshot` | 每日行情快照 | trade_date, bond_code, bond_name, price, price_change, change_pct, volume, amount, settlement, open_price, high_price, low_price, buy_price, sell_price, trade_time |
+| `bond_kline` | 历史日线数据 | symbol, trade_date, high, low, `close`, open, volume, amount |
+| `bond_weekly_kline` | 周线数据 | bond_code, trade_week, open/high/low/close, volume, amount, source, updated_at |
+| `bond_detail` | 可转债详细信息 | bond_code, name, stock_code, stock_name, conversion_start_date, conversion_end_date, 评级/规模/条款等扩展字段 |
+
+---
+
+## 数据库表与云函数对应关系
+
+| 表名 | 记录内容 | 写入（来源） | 读取（消费方） |
+|------|----------|-------------|---------------|
+| `bond_list` | 可转债基础列表：代码、名称、市场、是否活跃、创建/更新时间 | `cb_snapshot_updater`（每日增量：新增/退市标记） | `cb_oversold_detector`（关联 static 信息）<br>`cb_oversold_detector_weekly`（关联 static 信息）<br>`cb_weekly_kline_mootdx`（获取活跃转债列表）<br>`sina_bonds_detail_collector`（获取待采集详情的转债） |
+| `bond_snapshot` | 每日行情快照：开盘价/高/低/收、涨跌、成交量、成交额、买卖盘等 | `cb_snapshot_updater`（每日15:10，新浪财经全量行情） | `cb_volume_filter`（计算5日均成交额，筛选异动）<br>`cb_oversold_detector`（2026-05-21起日K线数据源）<br>`cb_weekly_kline_aggregator`（聚合本周日线为周线）<br>`cb_weekly_kline_mootdx`（daily模式补充最新周线） |
+| `bond_kline` | 历史日线数据：symbol、trade_date、high/low/close/open/volume/amount | **外部已有数据**（截至2026-05-20，无云函数维护写入） | `cb_oversold_detector`（2026-05-20前历史日K线）<br>`cb_weekly_kline_init`（聚合全量历史周线）<br>`cb_weekly_kline_mootdx`（daily模式聚合周线） |
+| `bond_weekly_kline` | 周线数据：周开/高/低/收、成交量、成交额、数据来源标记 | `cb_weekly_kline_mootdx`（每周五16:00 mootdx采集）<br>`cb_weekly_kline_init`（一次性初始化：从 bond_kline 聚合）<br>`cb_weekly_kline_aggregator`（从 bond_snapshot 聚合本周周线） | `cb_oversold_detector_weekly`（计算周线 CCI+WR 指标） |
+| `bond_detail` | 可转债详细信息：转股信息、评级、规模、利率、赎回/回售条款等 | `cb_snapshot_updater`（检测新债时自动采集）<br>`sina_bonds_detail_collector`（手动触发，批量采集/更新） | `cb_snapshot_updater`（检测新债时判断是否需要采集） |
+| `bond_static` | 静态信息：到期日、剩余规模、最新规模等 | **未找到写入云函数**（可能手动维护或由外部系统写入） | `cb_volume_filter`（关联获取到期日、剩余规模用于展示）<br>`cb_oversold_detector`（关联获取到期日）<br>`cb_oversold_detector_weekly`（关联获取到期日） |
+
+### 说明
+
+- `sina_bonds_info_collector` 和 `sina_stock_info_collector` 目前**只输出 JSON 文件到本地目录**，未写入数据库（代码引用了 `db_config` 但 zip 包中未包含该模块）。
+- `bond_static` 表在多只云函数中被**读取**，但在现有代码中**未找到创建或更新它的云函数**，推测是手动创建或由其他系统维护。
+- `bond_kline` 是历史遗留日线数据表，数据截至 2026-05-20，目前无云函数负责维护写入，仅被读取使用。
+- `bond_weekly_kline` 存在两种列命名风格：
+  - `cb_weekly_kline_mootdx` 创建时使用 `open/high/low/close`
+  - `cb_weekly_kline_init` / `cb_weekly_kline_aggregator` 使用 `open_price/high_price/low_price/close_price`
+  - `cb_oversold_detector_weekly` 通过 `AS` 别名做了兼容映射
 
 ---
 
