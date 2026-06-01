@@ -64,7 +64,7 @@
     },
     {
       "name": "api-bridge",
-      "timeout": 30,
+      "timeout": 180,
       "memorySize": 256,
       "runtime": "Nodejs18.15",
       "handler": "index.main",

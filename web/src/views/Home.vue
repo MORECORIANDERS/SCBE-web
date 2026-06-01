@@ -15,7 +15,7 @@ import QuickEntry from '@/components/common/QuickEntry.vue'
 import BondTable from '@/components/common/BondTable.vue'
 import RiseFallChart from '@/components/charts/RiseFallChart.vue'
 import type { BondData } from '@/components/common/BondTable.vue'
-import { fetchAll } from '@/api'
+import { fetchAll, refreshData } from '@/api'
 import type { PriceDistribution } from '@/api'
 
 const router = useRouter()
@@ -133,8 +133,9 @@ async function loadData() {
 
 async function handleRefresh() {
   refreshing.value = true
-  message.loading({ content: '正在刷新数据...', key: 'refresh' })
+  message.loading({ content: '正在采集最新数据...', key: 'refresh' })
   try {
+    await refreshData()
     await loadData()
     message.success({ content: '数据已更新', key: 'refresh' })
   } catch {

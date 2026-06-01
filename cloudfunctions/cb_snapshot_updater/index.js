@@ -673,8 +673,84 @@ async function main() {
   };
 }
 
+/**
+ * 可转债行情数据快速采集（被 api-bridge 远程调用）
+ * 精简模式：跳过节假日判断、随机延迟、飞书通知，只做采集+入库+返回数据
+ */
+async function refreshCollect() {
+  const startTime = Date.now();
+
+  console.log('🔄 [refresh] 开始采集可转债行情...');
+  const rawItems = await getAllBonds();
+  console.log(`📊 [refresh] 新浪返回 ${rawItems.length} 条原始记录`);
+
+  const bonds = processData(rawItems);
+  console.log(`📋 [refresh] 处理后 ${bonds.length} 只转债（已过滤定转/定01）`);
+
+  const snapshotStats = { inserted: 0, updated: 0, errors: 0 };
+  const listStats = { inserted: 0, updated: 0, errors: 0 };
+  const tradeDate = bonds.length > 0 ? bonds[0].trade_date : new Date().toISOString().slice(0, 10);
+
+  for (let i = 0; i < bonds.length; i += BATCH_SIZE) {
+    const batch = bonds.slice(i, i + BATCH_SIZE);
+
+    await executeWithRetry(async (conn) => {
+      const snapshotValues = batch.map(b => [
+        b.trade_date, b.bond_code, b.bond_name, b.price, b.price_change,
+        b.change_pct, b.volume, b.amount, b.settlement, b.open_price,
+        b.high_price, b.low_price, b.buy_price, b.sell_price, b.trade_time
+      ]);
+      const [snapResult] = await conn.query(SNAPSHOT_BATCH_SQL, [snapshotValues]);
+      const snapInserted = 2 * batch.length - snapResult.affectedRows;
+      snapshotStats.inserted += snapInserted;
+      snapshotStats.updated += batch.length - snapInserted;
+
+      const listValues = batch.map(b => [
+        b.bond_code, b.bond_name, b.market, 1
+      ]);
+      const [listResult] = await conn.query(LIST_BATCH_SQL, [listValues]);
+      const listInserted = 2 * batch.length - listResult.affectedRows;
+      listStats.inserted += listInserted;
+      listStats.updated += batch.length - listInserted;
+    }).catch((e) => {
+      snapshotStats.errors += batch.length;
+      console.error(`[refresh] Batch error at offset ${i}: ${e.message}`);
+    });
+  }
+
+  // 标记退市债券
+  let deactivatedBonds = null;
+  if (bonds.length > 0) {
+    deactivatedBonds = await markDeactivatedBonds(bonds.map(b => b.bond_code));
+  }
+
+  const elapsed = Math.round((Date.now() - startTime) / 1000);
+  console.log(`✅ [refresh] 完成！耗时 ${elapsed}s`);
+
+  return {
+    success: true,
+    total: bonds.length,
+    trade_date: tradeDate,
+    snapshotStats,
+    listStats,
+    deactivatedBonds: deactivatedBonds ? { count: deactivatedBonds.count } : null,
+    elapsed,
+  };
+}
+
 exports.main = async (event, context) => {
   try {
+    // refresh 模式：被 api-bridge 远程调用，快速采集不通知
+    if (event && event.action === 'refresh') {
+      const result = await refreshCollect();
+      return {
+        code: 0,
+        message: 'success',
+        data: result,
+      };
+    }
+
+    // 定时触发模式（原逻辑）
     const result = await main();
     return {
       code: 0,

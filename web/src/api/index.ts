@@ -92,3 +92,7 @@ export async function fetchPriceDistribution(): Promise<PriceDistribution[]> {
 export async function fetchAll(): Promise<AllData> {
   return request<AllData>('/api/all')
 }
+
+export async function refreshData(): Promise<any> {
+  return request<any>('/api/refresh')
+}

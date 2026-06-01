@@ -1,4 +1,5 @@
 const mysql = require('mysql2/promise')
+const cloudbase = require('@cloudbase/node-sdk')
 
 const DB_CONFIG = {
   host: process.env.DB_HOST || 'sh-cynosdbmysql-grp-3bg1w6t8.sql.tencentcdb.com',
@@ -11,6 +12,10 @@ const DB_CONFIG = {
 }
 
 const AUTH_TOKEN = process.env.API_TOKEN || 'scbe2024'
+
+const tcbApp = cloudbase.init({
+  env: process.env.TCB_ENV_ID || 'python12-9guk780v324f024d',
+})
 
 const pool = mysql.createPool({
   ...DB_CONFIG,
@@ -214,6 +219,19 @@ exports.main = async function (event) {
       case '/api/oversold': {
         const data = await getOversold()
         return successResponse({ success: true, data }, corsHeaders)
+      }
+
+      case '/api/refresh': {
+        console.log('🔄 [api-bridge] Calling cb_snapshot_updater with action=refresh...')
+        const funcResult = await tcbApp.callFunction({
+          name: 'cb_snapshot_updater',
+          data: { action: 'refresh' },
+        })
+        console.log('✅ [api-bridge] cb_snapshot_updater result:', JSON.stringify(funcResult).slice(0, 200))
+        return successResponse({
+          success: true,
+          data: funcResult,
+        }, corsHeaders)
       }
 
       case '/api/all': {

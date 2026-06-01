@@ -4,6 +4,7 @@
   "description": "HTTP API bridge for GitHub Pages frontend - queries MySQL and returns JSON data",
   "main": "index.js",
   "dependencies": {
-    "mysql2": "^3.6.0"
+    "mysql2": "^3.6.0",
+    "@cloudbase/node-sdk": "^2.10.0"
   }
 }

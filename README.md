@@ -70,19 +70,48 @@ SCBE-web/
 
 数据采集与分析通过腾讯 CloudBase 云函数实现，详见 [cloudbaserc.json](./cloudbaserc.json)：
 
-| 云函数 | 定时 | 功能 |
+| 云函数 | 触发 | 功能 |
 |--------|------|------|
-| `cb_snapshot_updater` | 交易日 15:10 | 从新浪财经采集全量可转债行情 |
+| `cb_snapshot_updater` | 交易日下午 15:10 + 手动刷新 | 从新浪财经采集全量可转债行情，更新 bond_snapshot + bond_list |
 | `cb_oversold_detector` | 交易日 15:30 | CCI + WR 双超卖检测（日K线） |
 | `cb_oversold_detector_weekly` | 交易日 15:40 | CCI + WR 双超卖检测（周K线） |
 | `cb_volume_filter` | 交易日 15:50 | 成交额异动筛选 |
 | `cb_weekly_kline_mootdx` | 每周五 16:00 | 周线数据采集 |
-| `api-bridge` | HTTP 触发 | 前端 API 网关 |
+| `api-bridge` | HTTP 触发（前端请求） | **API 网关**：查询数据库 + 转发手动刷新请求 |
+
+### 数据刷新流程
+
+点击前端"刷新数据"按钮时：
+
+```
+用户点击刷新
+  → Home.vue → refreshData()
+    → api-bridge (/api/refresh)
+      → 远程调用 cb_snapshot_updater (action=refresh)
+        → 新浪财经实时采集 → UPSERT 到 bond_snapshot
+      → 返回采集结果
+    → fetchAll() → 查询最新数据 → 渲染页面
+```
+
+数据库 `bond_snapshot` 表使用唯一键 `(trade_date, bond_code)`，**每天每只转债只保留一条最新记录**，新数据自动覆盖旧数据。
 
 > ⚠️ **安全说明**：`cloudbaserc.json` 中的 `envVariables` 已移除。请通过 CloudBase 控制台 → 云函数 → 环境变量 配置以下凭据：
 > - `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` — MySQL 连接信息
 > - `FEISHU_WEBHOOK` — 飞书机器人 Webhook 地址
 > - `API_TOKEN` — API 认证凭据（需与前端 `config.ts` 中的值一致）
+
+### 本地部署云函数
+
+本地修改云函数代码后，通过 CloudBase CLI 部署：
+
+```bash
+# 安装 CloudBase CLI
+npm install -g @cloudbase/cli
+
+# 部署单个云函数
+tcb functions deploy cb_snapshot_updater --force
+tcb functions deploy api-bridge --force
+```
 
 ## CI/CD
 
