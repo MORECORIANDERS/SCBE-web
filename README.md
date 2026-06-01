@@ -1,4 +1,4 @@
-# SCBE-web - 可转债投资分析系统
+# SCBE-web 
 
 可转债市场行情监控与分析 Web 应用，采用 GitHub 极简风格，提供实时行情、双低筛选、行业热力图、技术指标分析等功能。
 
@@ -72,7 +72,11 @@ SCBE-web/
 
 | 云函数 | 触发 | 功能 |
 |--------|------|------|
+<<<<<<< HEAD
 | `cb_snapshot_updater` | 交易日下午 15:10 + 手动刷新 | 从新浪财经采集全量可转债行情，更新 bond_snapshot + bond_list |
+=======
+| `cb_snapshot_updater` | 交易日 15:10 | 采集全量可转债行情 |
+>>>>>>> 65475ac4585d6bba2e99dc6a6f2e34936bc7df1e
 | `cb_oversold_detector` | 交易日 15:30 | CCI + WR 双超卖检测（日K线） |
 | `cb_oversold_detector_weekly` | 交易日 15:40 | CCI + WR 双超卖检测（周K线） |
 | `cb_volume_filter` | 交易日 15:50 | 成交额异动筛选 |
@@ -117,4 +121,4 @@ tcb functions deploy api-bridge --force
 
 推送到 `main` 分支会自动触发 GitHub Actions 构建并部署到 GitHub Pages。
 
-部署地址: `https://<username>.github.io/SCBE-web/`
+
