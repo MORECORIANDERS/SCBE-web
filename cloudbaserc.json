@@ -101,6 +101,22 @@
       "runtime": "Nodejs20.19",
       "handler": "index.main",
       "description": "可转债周线数据初始化函数，仅需运行一次"
+    },
+    {
+      "name": "api-bridge",
+      "timeout": 30,
+      "memorySize": 256,
+      "runtime": "Nodejs18.15",
+      "handler": "index.main",
+      "description": "HTTP API bridge for GitHub Pages frontend",
+      "envVariables": {
+        "DB_HOST": "sh-cynosdbmysql-grp-3bg1w6t8.sql.tencentcdb.com",
+        "DB_PORT": "27120",
+        "DB_USER": "cbreport",
+        "DB_PASSWORD": "huo22QQQ",
+        "DB_NAME": "python12-9guk780v324f024d",
+        "API_TOKEN": "scbe2024"
+      }
     }
   ]
 }
