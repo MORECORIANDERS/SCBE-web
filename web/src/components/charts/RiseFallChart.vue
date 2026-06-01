@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import * as echarts from 'echarts'
-import type { EChartsOption } from 'echarts'
 
 const props = defineProps<{
   categories: string[]
@@ -13,6 +12,10 @@ let chartInstance: echarts.ECharts | null = null
 
 const initChart = () => {
   if (!chartRef.value) return
+
+  if (chartInstance) {
+    chartInstance.dispose()
+  }
 
   chartInstance = echarts.init(chartRef.value)
 
@@ -28,7 +31,7 @@ const initChart = () => {
 
   const absoluteValues = props.values.map((val: number) => Math.abs(val))
 
-  const option: EChartsOption = {
+  const option: echarts.EChartsOption = {
     tooltip: {
       trigger: 'axis',
       backgroundColor: '#ffffff',
@@ -105,7 +108,7 @@ const initChart = () => {
           color: '#24292f',
           fontSize: 11,
           fontWeight: 500,
-          formatter: (params: any) => Math.abs(props.values[params.dataIndex])
+          formatter: (params: any) => String(Math.abs(props.values[params.dataIndex]))
         },
         animation: false
       }
@@ -117,6 +120,13 @@ const initChart = () => {
 
 onMounted(() => {
   initChart()
+})
+
+onUnmounted(() => {
+  if (chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
+  }
 })
 
 watch(

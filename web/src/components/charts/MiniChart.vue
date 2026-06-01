@@ -53,8 +53,8 @@ const initChart = () => {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: props.color || '#0969da' + '40' },
-              { offset: 1, color: props.color || '#0969da' + '00' }
+              { offset: 0, color: (props.color || '#0969da') + '40' },
+              { offset: 1, color: (props.color || '#0969da') + '00' }
             ]
           }
         },

@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Button, Table, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
 import NavTabs from '@/components/common/NavTabs.vue'
 import BottomNav from '@/components/common/BottomNav.vue'
 import { fetchBonds } from '@/api'
-import type { BondItem } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -30,9 +29,12 @@ onMounted(async () => {
         code: bond.code,
         name: bond.name,
         price: bond.price,
-        premium: 0,
-        doubleLow: bond.price,
+        premium: bond.premium ?? 0,
+        doubleLow: bond.double_low ?? bond.price,
         industry: bond.industry,
+        stockPrice: bond.stock_price ?? 0,
+        stockChangePercent: bond.stock_change_pct ?? 0,
+        remainSize: bond.remain_size ?? 0,
       }
     }
   } catch {

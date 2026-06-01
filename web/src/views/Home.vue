@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, h } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import {
   StarOutlined,
   SearchOutlined,
@@ -16,7 +16,7 @@ import BondTable from '@/components/common/BondTable.vue'
 import RiseFallChart from '@/components/charts/RiseFallChart.vue'
 import type { BondData } from '@/components/common/BondTable.vue'
 import { fetchAll } from '@/api'
-import type { AllData, PriceDistribution } from '@/api'
+import type { PriceDistribution } from '@/api'
 
 const router = useRouter()
 
@@ -56,7 +56,7 @@ const quickEntries = [
   { icon: SettingOutlined, label: '系统设置', path: '/settings' }
 ]
 
-const activeMetric = ref('risefall')
+const activeMetric = ref<string>('risefall')
 
 const chartTitles: Record<string, string> = {
   risefall: '涨跌分布',
@@ -79,10 +79,7 @@ const activeChartData = computed(() => {
 const activeChartTitle = computed(() => chartTitles[activeMetric.value] || '涨跌分布')
 
 const handleMetricClick = (type: string) => {
-  activeMetric.value = activeMetric.value === type ? null : type
-  if (activeMetric.value === null) {
-    activeMetric.value = 'risefall'
-  }
+  activeMetric.value = activeMetric.value === type ? '' : type
 }
 
 const handleLogout = () => {
@@ -110,9 +107,24 @@ async function loadData() {
       priceMedian.value = data.marketStats.priceMedian
       changeMedian.value = data.marketStats.changeMedian
       volumeMedian.value = data.marketStats.volumeMedian
+      volumeChange.value = data.marketStats.volumeChange ?? 0
     }
     if (data.priceDistribution) {
       buildPriceDistributionFromApi(data.priceDistribution)
+    }
+    if (data.bonds?.length) {
+      bondList.value = data.bonds.map(b => ({
+        code: b.code,
+        name: b.name,
+        price: b.price,
+        changePercent: b.change_pct,
+        stockPrice: b.stock_price ?? 0,
+        stockChangePercent: b.stock_change_pct ?? 0,
+        premium: b.premium ?? 0,
+        remainSize: b.remain_size ?? 0,
+        doubleLow: b.double_low ?? b.price,
+        industry: b.industry,
+      }))
     }
   } catch (e: any) {
     message.error('数据加载失败: ' + (e.message || '未知错误'))

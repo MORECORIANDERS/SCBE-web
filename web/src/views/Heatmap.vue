@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, h } from 'vue'
-import { Table, Spin, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import NavTabs from '@/components/common/NavTabs.vue'
 import BottomNav from '@/components/common/BottomNav.vue'
 import { fetchIndustryStats } from '@/api'
-import type { IndustryStat } from '@/api'
 
 const loading = ref(false)
 const industryData = ref<IndustryItem[]>([])
@@ -74,7 +73,7 @@ const industryColumns = [
     align: 'center' as const,
     sorter: (a: IndustryItem, b: IndustryItem) => a.down_count - b.down_count,
     customRender: ({ text }: { text: number }) => {
-      return h('span', { style: { color: '#52c41a', fontWeight: 500 } }, text)
+      return h('span', { style: { color: '#1a7f37', fontWeight: 500 } }, text)
     },
   },
   {
@@ -84,7 +83,7 @@ const industryColumns = [
     align: 'center' as const,
     sorter: (a: IndustryItem, b: IndustryItem) => a.up_count - b.up_count,
     customRender: ({ text }: { text: number }) => {
-      return h('span', { style: { color: '#ff4d4f', fontWeight: 500 } }, text)
+      return h('span', { style: { color: '#cf222e', fontWeight: 500 } }, text)
     },
   },
   {

@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Tabs } from 'ant-design-vue'
-
 const router = useRouter()
 const route = useRoute()
 

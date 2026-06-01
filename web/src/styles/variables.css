@@ -19,7 +19,7 @@
   --color-border: #d0d7de;
   --color-border-light: #eaecef;
 
-  /* 涨跌色 - 低饱和度（反转：上涨红色，下跌绿色） */
+  /* 涨跌色 - 低饱和度 */
   --color-rise: #cf222e;
   --color-rise-bg: #ffebe9;
   --color-fall: #1a7f37;
@@ -84,4 +84,32 @@
   --breakpoint-md: 768px;
   --breakpoint-lg: 992px;
   --breakpoint-xl: 1200px;
+}
+
+html.dark {
+  --color-primary: #58a6ff;
+  --color-primary-hover: #79b8ff;
+
+  --color-bg-primary: #0d1117;
+  --color-bg-secondary: #161b22;
+  --color-bg-tertiary: #21262d;
+
+  --color-text-primary: #e6edf3;
+  --color-text-secondary: #8b949e;
+  --color-text-tertiary: #6e7681;
+
+  --color-border: #30363d;
+  --color-border-light: #21262d;
+
+  --color-rise: #ff7b72;
+  --color-rise-bg: #3d1113;
+  --color-fall: #3fb950;
+  --color-fall-bg: #1a3a24;
+  --color-flat: #8b949e;
+  --color-flat-bg: #21262d;
+
+  --color-warning: #d29922;
+  --color-warning-bg: #3d2e00;
+  --color-info: #58a6ff;
+  --color-info-bg: #0c2d6b;
 }

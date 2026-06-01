@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, h } from 'vue'
-import { Table, Tag, Select, Input, InputNumber } from 'ant-design-vue'
+import { Tag, Select, Input, InputNumber } from 'ant-design-vue'
 import NavTabs from '@/components/common/NavTabs.vue'
 import BottomNav from '@/components/common/BottomNav.vue'
-import mockData from '../../mock/data.json'
 
 interface OversoldBond {
   bond_code: string
@@ -18,7 +17,7 @@ interface OversoldBond {
   wr: number
 }
 
-const rawData = ref<OversoldBond[]>(mockData.oversoldBonds || [])
+const rawData = ref<OversoldBond[]>([])
 
 const searchText = ref('')
 const filterIndustry = ref<string | undefined>(undefined)

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Form, FormItem, Input, Switch, InputNumber, Button, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import NavTabs from '@/components/common/NavTabs.vue'
 import BottomNav from '@/components/common/BottomNav.vue'
 
@@ -30,6 +30,14 @@ onMounted(() => {
 })
 
 const handleSave = () => {
+  if (formState.value.scheduledTime && !/^\d{2}:\d{2}$/.test(formState.value.scheduledTime)) {
+    message.warning('定时采集时间格式错误，请使用 HH:mm 格式')
+    return
+  }
+  if (formState.value.webhookUrl && !formState.value.webhookUrl.startsWith('https://')) {
+    message.warning('Webhook 地址格式错误，请使用 https:// 开头的地址')
+    return
+  }
   isLoading.value = true
 
   setTimeout(() => {

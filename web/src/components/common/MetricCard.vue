@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
 
@@ -38,11 +38,11 @@ const chartRef = ref<HTMLElement | null>(null)
 
 const initChart = () => {
   if (!chartRef.value || !props.trend || props.trend.length === 0) return
-  
+
   if (chartInstance) {
     chartInstance.dispose()
   }
-  
+
   chartInstance = echarts.init(chartRef.value)
   
   const isRise = props.change && props.change > 0
@@ -84,6 +84,13 @@ const initChart = () => {
 
 onMounted(() => {
   initChart()
+})
+
+onUnmounted(() => {
+  if (chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
+  }
 })
 </script>
 

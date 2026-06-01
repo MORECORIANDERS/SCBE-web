@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Button, Modal, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import {
   BarChartOutlined,
   ClockCircleOutlined,

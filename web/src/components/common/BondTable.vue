@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { Table, Tag } from 'ant-design-vue'
 
 export interface BondData {
   code: string
@@ -16,7 +15,7 @@ export interface BondData {
   isNew?: boolean
 }
 
-const props = defineProps<{
+defineProps<{
   data: BondData[]
 }>()
 

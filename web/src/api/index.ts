@@ -9,6 +9,7 @@ export interface MarketStats {
   priceMedian: number
   changeMedian: number
   volumeMedian: number
+  volumeChange?: number
 }
 
 export interface BondItem {
@@ -19,6 +20,11 @@ export interface BondItem {
   amount: number
   industry: string
   market: string
+  premium?: number
+  stock_price?: number
+  stock_change_pct?: number
+  remain_size?: number
+  double_low?: number
 }
 
 export interface IndustryStat {
