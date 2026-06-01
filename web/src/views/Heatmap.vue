@@ -49,6 +49,16 @@ const maxAvgAmount = computed(() => {
 
 const industryColumns = [
   {
+    title: '序号',
+    key: 'index',
+    fixed: 'left' as const,
+    align: 'center' as const,
+    width: 50,
+    customRender: ({ index }: { index: number }) => {
+      return h('span', { style: { color: '#656d76', fontSize: '12px' } }, index + 1)
+    },
+  },
+  {
     title: '行业',
     dataIndex: 'industry',
     key: 'industry',
@@ -146,6 +156,8 @@ const industryColumns = [
     key: 'avg_amount',
     align: 'center' as const,
     sorter: (a: IndustryItem, b: IndustryItem) => a.avg_amount - b.avg_amount,
+    defaultSortOrder: 'descend' as const,
+    sortDirections: ['descend', 'ascend'] as const,
     customRender: ({ text }: { text: number }) => {
       const pct = (text / maxAvgAmount.value) * 100
       return h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '1px', paddingLeft: '2px' } }, [

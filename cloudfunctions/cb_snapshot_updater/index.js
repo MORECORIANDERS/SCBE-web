@@ -724,6 +724,138 @@ async function refreshCollect() {
     deactivatedBonds = await markDeactivatedBonds(bonds.map(b => b.bond_code));
   }
 
+  // 计算并更新聚合统计表（供前端首页展示）
+  console.log('📊 [refresh] 计算聚合统计数据...');
+  await executeWithRetry(async (conn) => {
+    // 拉取原始快照数据，在 JS 中完成所有聚合（含正确的中位数计算）
+    const [snapshots] = await conn.query(
+      `SELECT s.bond_code, s.price, s.change_pct, s.amount,
+              COALESCE(st.industry_level1, s.industry1, '未知') as industry
+       FROM bond_snapshot s
+       LEFT JOIN bond_static st ON s.bond_code = st.bond_code
+       WHERE s.trade_date = ?`,
+      [tradeDate]
+    );
+
+    const prices = snapshots.map(r => Number(r.price)).filter(p => !isNaN(p));
+    const changePcts = snapshots.map(r => Number(r.change_pct)).filter(p => !isNaN(p));
+
+    function median(arr) {
+      if (arr.length === 0) return 0;
+      const sorted = [...arr].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      if (sorted.length % 2 === 0) return (sorted[mid - 1] + sorted[mid]) / 2;
+      return sorted[mid];
+    }
+
+    // 1. daily_reports — 市场概览
+    const upCount = snapshots.filter(r => (r.change_pct || 0) > 0).length;
+    const downCount = snapshots.filter(r => (r.change_pct || 0) < 0).length;
+    const flatCount = snapshots.filter(r => (r.change_pct || 0) === 0).length;
+    const totalAmount = snapshots.reduce((s, r) => s + Number(r.amount || 0), 0);
+
+    await conn.query(
+      `INSERT INTO daily_reports (trade_date, total_count, up_count, down_count, flat_count, total_amount, price_median, change_median, amount_median, generated_at, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'refresh')
+       ON DUPLICATE KEY UPDATE
+         total_count = VALUES(total_count), up_count = VALUES(up_count), down_count = VALUES(down_count),
+         flat_count = VALUES(flat_count), total_amount = VALUES(total_amount),
+         price_median = VALUES(price_median), change_median = VALUES(change_median),
+         amount_median = VALUES(amount_median), generated_at = NOW(), source = 'refresh'`,
+      [
+        tradeDate,
+        snapshots.length,
+        upCount,
+        downCount,
+        flatCount,
+        +(totalAmount / 100000000).toFixed(2),
+        +median(prices).toFixed(3),
+        +median(changePcts).toFixed(3),
+        +median(snapshots.map(r => Number(r.amount || 0) / 100000000)).toFixed(3),
+      ]
+    );
+
+    // 2. daily_industry_distribution — 行业分布
+    await conn.query(`DELETE FROM daily_industry_distribution WHERE trade_date = ?`, [tradeDate]);
+
+    const industryMap = new Map();
+    for (const r of snapshots) {
+      const ind = r.industry || '未知';
+      if (!industryMap.has(ind)) industryMap.set(ind, []);
+      industryMap.get(ind).push(r);
+    }
+
+    const industryInsertValues = [];
+    for (const [industry, bonds] of industryMap.entries()) {
+      const indUp = bonds.filter(b => Number(b.change_pct || 0) > 0).length;
+      const indDown = bonds.filter(b => Number(b.change_pct || 0) < 0).length;
+      const indChanges = bonds.map(b => Number(b.change_pct)).filter(c => !isNaN(c));
+      const indAmounts = bonds.map(b => Number(b.amount || 0));
+      const indAmountSum = indAmounts.reduce((s, v) => s + v, 0);
+
+      industryInsertValues.push([
+        tradeDate, industry, bonds.length, indUp, indDown,
+        +median(indChanges).toFixed(3),
+        +(indAmountSum / 100000000).toFixed(2),
+        +median(indAmounts.map(a => a / 100000000)).toFixed(3),
+      ]);
+    }
+
+    if (industryInsertValues.length > 0) {
+      await conn.query(
+        `INSERT INTO daily_industry_distribution (trade_date, industry, count, up_count, down_count, change_median, amount_sum, amount_median) VALUES ?`,
+        [industryInsertValues]
+      );
+    }
+
+    // 3. daily_price_distribution — 价格区间分布
+    await conn.query(`DELETE FROM daily_price_distribution WHERE trade_date = ?`, [tradeDate]);
+
+    function getPriceRange(price) {
+      if (price < 100) return '<100';
+      if (price < 110) return '100-110';
+      if (price < 120) return '110-120';
+      if (price < 130) return '120-130';
+      if (price < 140) return '130-140';
+      if (price < 150) return '140-150';
+      if (price < 160) return '150-160';
+      if (price < 200) return '160-200';
+      return '200+';
+    }
+
+    const priceRangeMap = new Map();
+    for (const r of snapshots) {
+      if (r.price === null) continue;
+      const pr = getPriceRange(r.price);
+      if (!priceRangeMap.has(pr)) priceRangeMap.set(pr, []);
+      priceRangeMap.get(pr).push(r);
+    }
+
+    const priceInsertValues = [];
+    for (const [priceRange, bonds] of priceRangeMap.entries()) {
+      const prUp = bonds.filter(b => Number(b.change_pct || 0) > 0).length;
+      const prDown = bonds.filter(b => Number(b.change_pct || 0) < 0).length;
+      const prChanges = bonds.map(b => Number(b.change_pct)).filter(c => !isNaN(c));
+      const prAmounts = bonds.map(b => Number(b.amount || 0));
+      const prAmountSum = prAmounts.reduce((s, v) => s + v, 0);
+
+      priceInsertValues.push([
+        tradeDate, priceRange, bonds.length, prUp, prDown,
+        +median(prChanges).toFixed(3),
+        +(prAmountSum / 100000000).toFixed(2),
+        +median(prAmounts.map(a => a / 100000000)).toFixed(3),
+      ]);
+    }
+
+    if (priceInsertValues.length > 0) {
+      await conn.query(
+        `INSERT INTO daily_price_distribution (trade_date, price_range, count, up_count, down_count, change_median, amount_sum, amount_median) VALUES ?`,
+        [priceInsertValues]
+      );
+    }
+  });
+  console.log('✅ [refresh] 聚合统计表已更新');
+
   const elapsed = Math.round((Date.now() - startTime) / 1000);
   console.log(`✅ [refresh] 完成！耗时 ${elapsed}s`);
 

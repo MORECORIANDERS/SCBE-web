@@ -104,7 +104,10 @@ async function getBonds() {
   const [rows] = await pool.query(
     `SELECT s.bond_code, s.bond_name, s.price, s.change_pct, s.amount,
             COALESCE(st.industry_level1, s.industry1, '') as industry1,
-            COALESCE(st.sector, s.sector, '') as sector
+            COALESCE(st.industry_level2, '') as industry2,
+            COALESCE(st.sector, s.sector, '') as sector,
+            COALESCE(st.maturity_date, '') as maturity_date,
+            COALESCE(st.latest_amount, 0) as latest_amount
      FROM bond_snapshot s
      LEFT JOIN bond_static st ON s.bond_code = st.bond_code
      WHERE s.trade_date = ?
@@ -119,7 +122,10 @@ async function getBonds() {
     change_pct: parseFloat(r.change_pct) || 0,
     amount: parseFloat(r.amount) ? +(parseFloat(r.amount) / 1e8).toFixed(2) : 0,
     industry: r.industry1 || '',
+    industry2: r.industry2 || '',
     market: r.sector || '',
+    maturity_date: r.maturity_date || '',
+    latest_amount: parseFloat(r.latest_amount) ? +parseFloat(r.latest_amount).toFixed(2) : 0,
   }))
 }
 

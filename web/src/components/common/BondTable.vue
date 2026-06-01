@@ -1,23 +1,29 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { computed } from 'vue'
 
 export interface BondData {
   code: string
   name: string
   price: number
   changePercent: number
-  stockPrice: number
-  stockChangePercent: number
-  premium: number
+  amount: number
+  industry1: string
+  industry2: string
   remainSize: number
-  doubleLow: number
-  industry: string
+  maturityDate: string
   isNew?: boolean
 }
 
-defineProps<{
+const props = defineProps<{
   data: BondData[]
 }>()
+
+const maxAmount = computed(() => {
+  if (props.data.length === 0) return 10
+  const max = Math.max(...props.data.map(b => b.amount))
+  return Math.max(max, 0.1)
+})
 
 const router = useRouter()
 
@@ -38,43 +44,48 @@ const columns = [
     title: '转债价格',
     dataIndex: 'price',
     key: 'price',
-    width: 120
+    width: 80,
+    sorter: (a: BondData, b: BondData) => a.price - b.price
   },
   {
     title: '涨跌幅',
     dataIndex: 'changePercent',
     key: 'changePercent',
-    width: 100
+    width: 80,
+    sorter: (a: BondData, b: BondData) => a.changePercent - b.changePercent,
+    defaultSortOrder: 'descend'
   },
   {
-    title: '正股价格',
-    dataIndex: 'stockPrice',
-    key: 'stockPrice',
-    width: 120
-  },
-  {
-    title: '正股涨跌',
-    dataIndex: 'stockChangePercent',
-    key: 'stockChangePercent',
-    width: 100
-  },
-  {
-    title: '溢价率',
-    dataIndex: 'premium',
-    key: 'premium',
-    width: 100
+    title: '成交额(亿)',
+    dataIndex: 'amount',
+    key: 'amount',
+    width: 150,
+    sorter: (a: BondData, b: BondData) => a.amount - b.amount
   },
   {
     title: '剩余规模',
     dataIndex: 'remainSize',
     key: 'remainSize',
-    width: 120
+    width: 90,
+    sorter: (a: BondData, b: BondData) => a.remainSize - b.remainSize
   },
   {
-    title: '双低数值',
-    dataIndex: 'doubleLow',
-    key: 'doubleLow',
-    width: 120
+    title: '行业一级',
+    dataIndex: 'industry1',
+    key: 'industry1',
+    width: 90
+  },
+  {
+    title: '行业二级',
+    dataIndex: 'industry2',
+    key: 'industry2',
+    width: 90
+  },
+  {
+    title: '到期日期',
+    dataIndex: 'maturityDate',
+    key: 'maturityDate',
+    width: 100
   }
 ]
 
@@ -87,6 +98,11 @@ const getChangeClass = (value: number) => {
   if (value < 0) return 'text-fall'
   return 'text-flat'
 }
+
+const amountBarWidth = (amount: number) => {
+  const ratio = amount / maxAmount.value
+  return Math.min(Math.max(ratio * 100, 2), 100)
+}
 </script>
 
 <template>
@@ -94,8 +110,8 @@ const getChangeClass = (value: number) => {
     <a-table
       :columns="columns"
       :data-source="data"
-      :pagination="{ pageSize: 10 }"
-      :scroll="{ x: 1000 }"
+      :pagination="{ pageSize: 15 }"
+      :scroll="{ x: 900 }"
       :row-key="(record: BondData) => record.code"
       :custom-row="(record: BondData) => ({ onClick: () => handleRowClick(record), style: { cursor: 'pointer' } })"
       size="middle"
@@ -115,22 +131,19 @@ const getChangeClass = (value: number) => {
             {{ (record as BondData).changePercent > 0 ? '+' : '' }}{{ formatNumber((record as BondData).changePercent) }}%
           </span>
         </template>
-        <template v-else-if="column.key === 'stockChangePercent'">
-          <span :class="getChangeClass((record as BondData).stockChangePercent)">
-            {{ (record as BondData).stockChangePercent > 0 ? '+' : '' }}{{ formatNumber((record as BondData).stockChangePercent) }}%
-          </span>
-        </template>
-        <template v-else-if="column.key === 'premium'">
-          <span>{{ formatNumber((record as BondData).premium) }}%</span>
-        </template>
-        <template v-else-if="column.key === 'remainSize'">
-          <span>{{ formatNumber((record as BondData).remainSize, 2) }}亿</span>
-        </template>
-        <template v-else-if="column.key === 'doubleLow'">
-          <span>{{ formatNumber((record as BondData).doubleLow) }}</span>
+        <template v-else-if="column.key === 'amount'">
+          <div class="amount-bar-wrapper">
+            <div class="amount-bar-track">
+              <div
+                class="amount-bar-fill"
+                :style="{ width: amountBarWidth((record as BondData).amount) + '%' }"
+              ></div>
+            </div>
+            <span class="amount-bar-label">{{ formatNumber((record as BondData).amount, 2) }}</span>
+          </div>
         </template>
         <template v-else>
-          <span>{{ formatNumber((record as any)[column.key]) }}</span>
+          <span>{{ (record as any)[column.key] }}</span>
         </template>
       </template>
     </a-table>
@@ -174,5 +187,36 @@ const getChangeClass = (value: number) => {
   font-size: 9px;
   padding: 0 3px;
   flex-shrink: 0;
+}
+
+.amount-bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.amount-bar-track {
+  flex: 1;
+  height: 10px;
+  background-color: #f0f3f6;
+  border-radius: 5px;
+  overflow: hidden;
+  min-width: 40px;
+}
+
+.amount-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #54aeff, #0969da);
+  border-radius: 5px;
+  transition: width 0.3s ease;
+}
+
+.amount-bar-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  min-width: 36px;
+  text-align: right;
 }
 </style>

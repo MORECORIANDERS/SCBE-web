@@ -14,9 +14,9 @@ import BottomNav from '@/components/common/BottomNav.vue'
 import QuickEntry from '@/components/common/QuickEntry.vue'
 import BondTable from '@/components/common/BondTable.vue'
 import RiseFallChart from '@/components/charts/RiseFallChart.vue'
+import StackedBarChart from '@/components/charts/StackedBarChart.vue'
 import type { BondData } from '@/components/common/BondTable.vue'
 import { fetchAll, refreshData } from '@/api'
-import type { PriceDistribution } from '@/api'
 
 const router = useRouter()
 
@@ -32,22 +32,132 @@ const priceMedian = ref(0)
 const changeMedian = ref(0)
 const volumeMedian = ref(0)
 
-const riseFallData = ref({
-  categories: ['<-5%', '-5~-3%', '-3~-1%', '-1~0%', '0~1%', '1~3%', '3~5%', '>5%'],
-  values: [2, 15, 28, 45, 66, 12, -58, -42]
+const RISE_FALL_CATEGORIES = ['跌停', '<-7%', '-7~-5%', '-5~-3%', '-3~0%', '0', '0~3%', '3~5%', '5~7%', '>7%', '涨停']
+
+function getChangeCategory(changePct: number): string {
+  if (changePct >= 19.8) return '涨停'
+  if (changePct > 7) return '>7%'
+  if (changePct >= 5) return '5~7%'
+  if (changePct >= 3) return '3~5%'
+  if (changePct > 0) return '0~3%'
+  if (changePct === 0) return '0'
+  if (changePct > -3) return '-3~0%'
+  if (changePct >= -5) return '-5~-3%'
+  if (changePct >= -7) return '-7~-5%'
+  if (changePct > -19.8) return '<-7%'
+  return '跌停'
+}
+
+const riseFallData = computed(() => {
+  const counts: Record<string, number> = {}
+  for (const cat of RISE_FALL_CATEGORIES) {
+    counts[cat] = 0
+  }
+  for (const bond of bondList.value) {
+    const cat = getChangeCategory(bond.changePercent)
+    counts[cat]++
+  }
+  const values = RISE_FALL_CATEGORIES.map(cat => counts[cat])
+  return { categories: RISE_FALL_CATEGORIES, values }
 })
 
-const volumeDistributionData = ref({
-  categories: ['<50亿', '50-100亿', '100-200亿', '200-500亿', '500亿+'],
-  values: [34, 78, 56, 89, 40]
+const volumeDistributionData = computed(() => {
+  const ranges = [
+    { label: '<1亿', max: 1 },
+    { label: '1~5亿', max: 5 },
+    { label: '5~10亿', max: 10 },
+    { label: '10~50亿', max: 50 },
+    { label: '50亿+', max: Infinity },
+  ]
+  const counts = ranges.map(() => 0)
+  for (const bond of bondList.value) {
+    const idx = ranges.findIndex(r => bond.amount < r.max)
+    if (idx >= 0) counts[idx]++
+  }
+  return { categories: ranges.map(r => r.label), values: counts }
 })
 
-const priceDistributionData = ref({
-  categories: ['<100', '100-110', '110-120', '120-130', '130-140', '140-150', '150-160', '160-200', '200+'],
-  values: [12, 45, 78, 56, 34, 22, 15, 28, 7]
+const priceDistributionData = computed(() => {
+  const ranges = [
+    { label: '<100', max: 100 },
+    { label: '100~110', max: 110 },
+    { label: '110~120', max: 120 },
+    { label: '120~130', max: 130 },
+    { label: '130~140', max: 140 },
+    { label: '140~150', max: 150 },
+    { label: '150~160', max: 160 },
+    { label: '160~200', max: 200 },
+    { label: '200+', max: Infinity },
+  ]
+  const upCounts = ranges.map(() => 0)
+  const downCounts = ranges.map(() => 0)
+  const flatCounts = ranges.map(() => 0)
+  const amounts: number[][] = ranges.map(() => [])
+  for (const bond of bondList.value) {
+    const idx = ranges.findIndex(r => bond.price < r.max)
+    if (idx < 0) continue
+    if (bond.changePercent > 0) upCounts[idx]++
+    else if (bond.changePercent < 0) downCounts[idx]++
+    else flatCounts[idx]++
+    amounts[idx].push(bond.amount)
+  }
+  const amountSumValues = amounts.map(arr => +arr.reduce((s, v) => s + v, 0).toFixed(2))
+  const amountMedianValues = amounts.map(arr => {
+    if (arr.length === 0) return 0
+    const sorted = [...arr].sort((a, b) => a - b)
+    const mid = Math.floor(sorted.length / 2)
+    return +sorted[mid].toFixed(2)
+  })
+  return {
+    categories: ranges.map(r => r.label),
+    upValues: upCounts,
+    downValues: downCounts,
+    flatValues: flatCounts,
+    totalValues: upCounts.map((_, i) => upCounts[i] + downCounts[i] + flatCounts[i]),
+    amountSumValues,
+    amountMedianValues,
+  }
 })
 
 const bondList = ref<BondData[]>([])
+const selectedChangeCategory = ref<string | null>(null)
+const selectedPriceRange = ref<string | null>(null)
+const selectedVolumeRange = ref<string | null>(null)
+
+function getPriceRange(price: number): string {
+  if (price < 100) return '<100'
+  if (price < 110) return '100~110'
+  if (price < 120) return '110~120'
+  if (price < 130) return '120~130'
+  if (price < 140) return '130~140'
+  if (price < 150) return '140~150'
+  if (price < 160) return '150~160'
+  if (price < 200) return '160~200'
+  return '200+'
+}
+
+function getVolumeRange(amount: number): string {
+  if (amount < 1) return '<1亿'
+  if (amount < 5) return '1~5亿'
+  if (amount < 10) return '5~10亿'
+  if (amount < 50) return '10~50亿'
+  return '50亿+'
+}
+
+const filteredBondList = computed(() => {
+  let list = [...bondList.value]
+  if (selectedChangeCategory.value) {
+    list = list.filter(b => getChangeCategory(b.changePercent) === selectedChangeCategory.value)
+  }
+  if (selectedPriceRange.value) {
+    list = list.filter(b => getPriceRange(b.price) === selectedPriceRange.value)
+  }
+  if (selectedVolumeRange.value) {
+    list = list.filter(b => getVolumeRange(b.amount) === selectedVolumeRange.value)
+  }
+  list.sort((a, b) => b.changePercent - a.changePercent)
+  return list
+})
 
 const quickEntries = [
   { icon: StarOutlined, label: '自选转债', path: '/' },
@@ -58,25 +168,18 @@ const quickEntries = [
 
 const activeMetric = ref<string>('risefall')
 
-const chartTitles: Record<string, string> = {
-  risefall: '涨跌分布',
-  volume: '成交额分布',
-  median: '价格分布'
-}
-
 const activeChartData = computed(() => {
-  switch (activeMetric.value) {
-    case 'volume':
-      return volumeDistributionData.value
-    case 'median':
-      return priceDistributionData.value
-    case 'risefall':
-    default:
-      return riseFallData.value
+  if (activeMetric.value === 'volume') {
+    return volumeDistributionData.value
   }
+  return riseFallData.value
 })
 
-const activeChartTitle = computed(() => chartTitles[activeMetric.value] || '涨跌分布')
+const activeChartTitle = computed(() => {
+  if (activeMetric.value === 'volume') return '成交额分布'
+  if (activeMetric.value === 'median') return '价格分布'
+  return '涨跌分布'
+})
 
 const handleMetricClick = (type: string) => {
   activeMetric.value = activeMetric.value === type ? '' : type
@@ -86,14 +189,6 @@ const handleLogout = () => {
   localStorage.removeItem('isLoggedIn')
   message.success('已退出登录')
   router.push('/login')
-}
-
-function buildPriceDistributionFromApi(dist: PriceDistribution[]) {
-  if (!dist || dist.length === 0) return
-  priceDistributionData.value = {
-    categories: dist.map(d => d.price_range),
-    values: dist.map(d => d.count),
-  }
 }
 
 async function loadData() {
@@ -109,21 +204,17 @@ async function loadData() {
       volumeMedian.value = data.marketStats.volumeMedian
       volumeChange.value = data.marketStats.volumeChange ?? 0
     }
-    if (data.priceDistribution) {
-      buildPriceDistributionFromApi(data.priceDistribution)
-    }
     if (data.bonds?.length) {
       bondList.value = data.bonds.map(b => ({
         code: b.code,
         name: b.name,
         price: b.price,
         changePercent: b.change_pct,
-        stockPrice: b.stock_price ?? 0,
-        stockChangePercent: b.stock_change_pct ?? 0,
-        premium: b.premium ?? 0,
-        remainSize: b.remain_size ?? 0,
-        doubleLow: b.double_low ?? b.price,
-        industry: b.industry,
+        amount: b.amount,
+        industry1: b.industry,
+        industry2: b.industry2,
+        remainSize: b.latest_amount,
+        maturityDate: b.maturity_date,
       }))
     }
   } catch (e: any) {
@@ -135,6 +226,9 @@ async function handleRefresh() {
   refreshing.value = true
   message.loading({ content: '正在采集最新数据...', key: 'refresh' })
   try {
+    selectedChangeCategory.value = null
+    selectedPriceRange.value = null
+    selectedVolumeRange.value = null
     await refreshData()
     await loadData()
     message.success({ content: '数据已更新', key: 'refresh' })
@@ -143,6 +237,24 @@ async function handleRefresh() {
   } finally {
     refreshing.value = false
   }
+}
+
+function handleChangeBarClick(category: string) {
+  selectedChangeCategory.value = selectedChangeCategory.value === category ? null : category
+  selectedPriceRange.value = null
+  selectedVolumeRange.value = null
+}
+
+function handlePriceBarClick(category: string) {
+  selectedPriceRange.value = selectedPriceRange.value === category ? null : category
+  selectedChangeCategory.value = null
+  selectedVolumeRange.value = null
+}
+
+function handleVolumeBarClick(category: string) {
+  selectedVolumeRange.value = selectedVolumeRange.value === category ? null : category
+  selectedChangeCategory.value = null
+  selectedPriceRange.value = null
 }
 
 onMounted(() => {
@@ -234,11 +346,42 @@ onMounted(() => {
         </section>
 
         <section class="section rise-fall-section">
-          <h2 class="section-title">{{ activeChartTitle }}</h2>
-          <RiseFallChart
-            :categories="activeChartData.categories"
-            :values="activeChartData.values"
-          />
+          <h2 class="section-title">
+            {{ activeChartTitle }}
+            <template v-if="activeMetric === 'risefall' && selectedChangeCategory">
+              <span class="filter-hint">— 筛选: {{ selectedChangeCategory }}</span>
+              <a-button size="small" type="link" @click="selectedChangeCategory = null">清除</a-button>
+            </template>
+            <template v-else-if="activeMetric === 'volume' && selectedVolumeRange">
+              <span class="filter-hint">— 筛选: {{ selectedVolumeRange }}</span>
+              <a-button size="small" type="link" @click="selectedVolumeRange = null">清除</a-button>
+            </template>
+            <template v-else-if="activeMetric === 'median' && selectedPriceRange">
+              <span class="filter-hint">— 筛选: {{ selectedPriceRange }}</span>
+              <a-button size="small" type="link" @click="selectedPriceRange = null">清除</a-button>
+            </template>
+          </h2>
+          <template v-if="activeMetric === 'median'">
+            <StackedBarChart
+              :categories="priceDistributionData.categories"
+              :up-values="priceDistributionData.upValues"
+              :down-values="priceDistributionData.downValues"
+              :flat-values="priceDistributionData.flatValues"
+              :total-values="priceDistributionData.totalValues"
+              :amount-sum-values="priceDistributionData.amountSumValues"
+              :amount-median-values="priceDistributionData.amountMedianValues"
+              :selected-category="selectedPriceRange"
+              @bar-click="handlePriceBarClick($event)"
+            />
+          </template>
+          <template v-else>
+            <RiseFallChart
+              :categories="activeChartData.categories"
+              :values="activeChartData.values"
+              :selected-category="activeMetric === 'risefall' ? selectedChangeCategory : selectedVolumeRange"
+              @bar-click="activeMetric === 'risefall' ? handleChangeBarClick($event) : handleVolumeBarClick($event)"
+            />
+          </template>
         </section>
 
         <section class="section quick-entry-section">
@@ -256,8 +399,22 @@ onMounted(() => {
         </section>
 
         <section class="section bond-list-section">
-          <h2 class="section-title">可转债行情</h2>
-          <BondTable :data="bondList" />
+          <h2 class="section-title">
+            可转债行情
+            <template v-if="selectedChangeCategory">
+              <span class="filter-hint">— 筛: {{ selectedChangeCategory }}</span>
+              <a-button size="small" type="link" @click="selectedChangeCategory = null; selectedPriceRange = null; selectedVolumeRange = null">清除</a-button>
+            </template>
+            <template v-else-if="selectedPriceRange">
+              <span class="filter-hint">— 筛: {{ selectedPriceRange }}</span>
+              <a-button size="small" type="link" @click="selectedPriceRange = null; selectedChangeCategory = null; selectedVolumeRange = null">清除</a-button>
+            </template>
+            <template v-else-if="selectedVolumeRange">
+              <span class="filter-hint">— 筛: {{ selectedVolumeRange }}</span>
+              <a-button size="small" type="link" @click="selectedVolumeRange = null; selectedChangeCategory = null; selectedPriceRange = null">清除</a-button>
+            </template>
+          </h2>
+          <BondTable :data="filteredBondList" />
         </section>
       </div>
     </div>
@@ -314,6 +471,15 @@ onMounted(() => {
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   margin-bottom: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.filter-hint {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-secondary);
 }
 
 .metrics-grid {

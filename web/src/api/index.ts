@@ -19,7 +19,10 @@ export interface BondItem {
   change_pct: number
   amount: number
   industry: string
+  industry2: string
   market: string
+  maturity_date: string
+  latest_amount: number
   premium?: number
   stock_price?: number
   stock_change_pct?: number

@@ -5,6 +5,11 @@ import * as echarts from 'echarts'
 const props = defineProps<{
   categories: string[]
   values: number[]
+  selectedCategory?: string | null
+}>()
+
+const emit = defineEmits<{
+  barClick: [category: string]
 }>()
 
 const chartRef = ref<HTMLElement | null>(null)
@@ -23,10 +28,16 @@ const initChart = () => {
   const fallColor = '#1a7f37'
   const neutralColor = '#656d76'
 
-  const colors = props.values.map((val: number) => {
-    if (val > 0) return riseColor
-    if (val < 0) return fallColor
-    return neutralColor
+  const FALL_CATEGORIES = ['跌停', '<-7%', '-7~-5%', '-5~-3%', '-3~0%']
+
+  const colors = props.categories.map((cat: string) => {
+    if (props.selectedCategory && props.selectedCategory !== cat) {
+      return fallColor + '20'
+    }
+    if (FALL_CATEGORIES.includes(cat)) return fallColor
+    if (cat === '0') return neutralColor
+    if (cat === '涨停') return '#cf222e'
+    return riseColor
   })
 
   const absoluteValues = props.values.map((val: number) => Math.abs(val))
@@ -45,8 +56,10 @@ const initChart = () => {
         type: 'shadow'
       },
       formatter: (params: any) => {
-        const originalValue = props.values[params.dataIndex]
-        return `${params.name}<br/>数量: <strong>${originalValue}</strong>`
+        const idx = params[0].dataIndex
+        const originalValue = props.values[idx]
+        const absValue = Math.abs(originalValue)
+        return `${props.categories[idx]}<br/>数量: <strong>${absValue}</strong>`
       }
     },
     grid: {
@@ -116,6 +129,14 @@ const initChart = () => {
   }
 
   chartInstance.setOption(option)
+
+  chartInstance.off('click')
+  chartInstance.on('click', (params: any) => {
+    if (params.componentType === 'series') {
+      const category = props.categories[params.dataIndex]
+      emit('barClick', category)
+    }
+  })
 }
 
 onMounted(() => {
@@ -130,7 +151,7 @@ onUnmounted(() => {
 })
 
 watch(
-  () => [props.categories, props.values],
+  () => [props.categories, props.values, props.selectedCategory],
   () => {
     initChart()
   },
