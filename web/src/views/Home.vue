@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, h } from 'vue'
 import { useRouter } from 'vue-router'
-import { message } from 'ant-design-vue'
+import { Button, message } from 'ant-design-vue'
 import {
   StarOutlined,
   SearchOutlined,
   WarningOutlined,
-  SettingOutlined
+  SettingOutlined,
+  ReloadOutlined
 } from '@ant-design/icons-vue'
 import NavTabs from '@/components/common/NavTabs.vue'
 import BottomNav from '@/components/common/BottomNav.vue'
@@ -14,20 +15,22 @@ import QuickEntry from '@/components/common/QuickEntry.vue'
 import BondTable from '@/components/common/BondTable.vue'
 import RiseFallChart from '@/components/charts/RiseFallChart.vue'
 import type { BondData } from '@/components/common/BondTable.vue'
-import mockData from '../../mock/data.json'
+import { fetchAll } from '@/api'
+import type { AllData, PriceDistribution } from '@/api'
 
 const router = useRouter()
 
-const riseCount = ref(mockData.marketStats?.upCount || 0)
-const fallCount = ref(mockData.marketStats?.downCount || 0)
-const flatCount = ref(mockData.marketStats?.flatCount || 0)
+const loading = ref(false)
+const refreshing = ref(false)
 
-const totalVolume = ref(mockData.marketStats?.totalVolume || 0)
-const volumeChange = ref(mockData.marketStats?.volumeChange || 0)
-
-const priceMedian = ref(mockData.marketStats?.priceMedian || 0)
-const changeMedian = ref(mockData.marketStats?.changeMedian || 0)
-const volumeMedian = ref(mockData.marketStats?.volumeMedian || 0)
+const riseCount = ref(0)
+const fallCount = ref(0)
+const flatCount = ref(0)
+const totalVolume = ref(0)
+const volumeChange = ref(0)
+const priceMedian = ref(0)
+const changeMedian = ref(0)
+const volumeMedian = ref(0)
 
 const riseFallData = ref({
   categories: ['<-5%', '-5~-3%', '-3~-1%', '-1~0%', '0~1%', '1~3%', '3~5%', '>5%'],
@@ -88,8 +91,50 @@ const handleLogout = () => {
   router.push('/login')
 }
 
+function buildPriceDistributionFromApi(dist: PriceDistribution[]) {
+  if (!dist || dist.length === 0) return
+  priceDistributionData.value = {
+    categories: dist.map(d => d.price_range),
+    values: dist.map(d => d.count),
+  }
+}
+
+async function loadData() {
+  try {
+    const data = await fetchAll()
+    if (data.marketStats) {
+      riseCount.value = data.marketStats.upCount
+      fallCount.value = data.marketStats.downCount
+      flatCount.value = data.marketStats.flatCount
+      totalVolume.value = data.marketStats.totalVolume
+      priceMedian.value = data.marketStats.priceMedian
+      changeMedian.value = data.marketStats.changeMedian
+      volumeMedian.value = data.marketStats.volumeMedian
+    }
+    if (data.priceDistribution) {
+      buildPriceDistributionFromApi(data.priceDistribution)
+    }
+  } catch (e: any) {
+    message.error('数据加载失败: ' + (e.message || '未知错误'))
+  }
+}
+
+async function handleRefresh() {
+  refreshing.value = true
+  message.loading({ content: '正在刷新数据...', key: 'refresh' })
+  try {
+    await loadData()
+    message.success({ content: '数据已更新', key: 'refresh' })
+  } catch {
+    message.error({ content: '刷新失败', key: 'refresh' })
+  } finally {
+    refreshing.value = false
+  }
+}
+
 onMounted(() => {
-  bondList.value = []
+  loading.value = true
+  loadData().finally(() => { loading.value = false })
 })
 </script>
 
@@ -105,6 +150,14 @@ onMounted(() => {
           </span>
         </div>
         <div class="toolbar-right">
+          <a-button
+            size="small"
+            :loading="refreshing"
+            :icon="h(ReloadOutlined)"
+            @click="handleRefresh"
+          >
+            刷新数据
+          </a-button>
           <a-button size="small" @click="handleLogout">
             退出登录
           </a-button>

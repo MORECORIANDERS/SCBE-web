@@ -1,59 +1,12 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+node_modules/
+dist/
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-.vite
-
-# Frontend web project
-web/node_modules
-web/dist
-web/.vite
-
-# CloudBase functions - Python vendor and cache
-cloudfunctions/**/vendor/
-cloudfunctions/**/__pycache__/
-cloudfunctions/**/*.pyc
-cloudfunctions/**/*.zip
-cloudfunctions/**/layer-*/
-cloudfunctions/layer_build/
-
-# Local cache and data files
-convertible_bond/f10_cache/
-convertible_bond/*.json
-convertible_bond/*.csv
-convertible_bond/*.xlsx
-underlying_stock/*.json
-
-# IDE local settings
-.claude/
-.trae/
-
-# Skill files (auto-generated)
-.agents/
-
-# MCP and tool logs
-*.log
-mcp_log.txt
-
-# Auto-generated lock files
+*.local
+cloudfunctions/
+vendor/
+__pycache__/
+*.pyc
 skills-lock.json
+.agents/
+.claude/
+.trae/skills/

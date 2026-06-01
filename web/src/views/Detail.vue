@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Button, Table } from 'ant-design-vue'
+import { Button, Table, message } from 'ant-design-vue'
 import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
 import NavTabs from '@/components/common/NavTabs.vue'
 import BottomNav from '@/components/common/BottomNav.vue'
-import mockData from '../../mock/data.json'
+import { fetchBonds } from '@/api'
+import type { BondItem } from '@/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,21 +21,24 @@ const premiumChartRef = ref<HTMLElement | null>(null)
 let priceChartInstance: echarts.ECharts | null = null
 let premiumChartInstance: echarts.ECharts | null = null
 
-onMounted(() => {
-  const bond = mockData.bonds.find(b => b.code === bondCode.value)
-  if (bond) {
-    bondInfo.value = bond
-    historyData.value = mockData.bondHistory[bondCode.value]?.historyPrices || [
-      { date: '2024-01-15', price: 122.34, premium: 9.5 },
-      { date: '2024-01-16', price: 123.56, premium: 9.2 },
-      { date: '2024-01-17', price: 124.78, premium: 8.9 },
-      { date: '2024-01-18', price: 125.12, premium: 8.7 },
-      { date: '2024-01-19', price: 126.45, premium: 8.5 },
-      { date: '2024-01-20', price: 127.23, premium: 8.6 },
-      { date: '2024-01-21', price: bond.price, premium: bond.premium }
-    ]
-    initCharts()
+onMounted(async () => {
+  try {
+    const allBonds = await fetchBonds()
+    const bond = allBonds.find(b => b.code === bondCode.value)
+    if (bond) {
+      bondInfo.value = {
+        code: bond.code,
+        name: bond.name,
+        price: bond.price,
+        premium: 0,
+        doubleLow: bond.price,
+        industry: bond.industry,
+      }
+    }
+  } catch {
+    message.error('加载详情失败')
   }
+  initCharts()
 })
 
 const initCharts = () => {

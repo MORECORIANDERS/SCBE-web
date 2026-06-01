@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, h } from 'vue'
-import { Table, Spin } from 'ant-design-vue'
+import { Table, Spin, message } from 'ant-design-vue'
 import NavTabs from '@/components/common/NavTabs.vue'
 import BottomNav from '@/components/common/BottomNav.vue'
-import mockData from '../../mock/data.json'
+import { fetchIndustryStats } from '@/api'
+import type { IndustryStat } from '@/api'
 
-// ==================== 类型定义 ====================
+const loading = ref(false)
+const industryData = ref<IndustryItem[]>([])
+
 interface IndustryItem {
   industry: string
   total: number
@@ -18,16 +21,17 @@ interface IndustryItem {
   change_median: number
 }
 
-// ==================== 状态 ====================
-const loading = ref(false)
-const industryData = ref<IndustryItem[]>([])
-
-// ==================== 数据获取 ====================
 const fetchIndustryData = async () => {
   loading.value = true
-  await new Promise(r => setTimeout(r, 300))
-  industryData.value = mockData.industryStats || []
-  loading.value = false
+  try {
+    const data = await fetchIndustryStats()
+    industryData.value = data as IndustryItem[]
+  } catch (e: any) {
+    message.error('行业数据加载失败')
+    industryData.value = []
+  } finally {
+    loading.value = false
+  }
 }
 
 // ==================== 行业表格列定义 ====================
