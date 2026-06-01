@@ -9,8 +9,7 @@ const activeKey = computed(() => {
     '/': 'home',
     '/heatmap': 'heatmap',
     '/scatter': 'scatter',
-    '/control': 'control',
-    '/settings': 'settings'
+    '/control': 'control'
   }
   return routeMap[route.path] || 'home'
 })
@@ -20,8 +19,7 @@ const handleTabChange = (key: string) => {
     home: '/',
     heatmap: '/heatmap',
     scatter: '/scatter',
-    control: '/control',
-    settings: '/settings'
+    control: '/control'
   }
   router.push(pathMap[key] || '/')
 }
@@ -58,13 +56,7 @@ const handleTabChange = (key: string) => {
 
         <a-tab-pane key="control">
           <template #tab>
-            <span class="tab-label">系统控制</span>
-          </template>
-        </a-tab-pane>
-
-        <a-tab-pane key="settings">
-          <template #tab>
-            <span class="tab-label">参数配置</span>
+            <span class="tab-label">系统配置</span>
           </template>
         </a-tab-pane>
       </a-tabs>

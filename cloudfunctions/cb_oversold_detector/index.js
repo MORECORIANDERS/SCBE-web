@@ -115,7 +115,7 @@ async function loadDailyKlineData() {
       const cutoffDate = await getKlineCutoffDate();
 
       const [klineAll] = await conn.query(`
-        SELECT SUBSTRING(symbol, 3) AS bond_code, trade_date, high, low, \`close\`
+        SELECT symbol AS bond_code, trade_date, high, low, \`close\`
         FROM bond_kline
         WHERE trade_date >= DATE_SUB(?, INTERVAL 30 DAY)
           AND trade_date <= ?
@@ -330,6 +330,7 @@ function sendFeishuNotification(bonds, elapsed, mode) {
  */
 function detectOversold(bonds, klineByBond) {
   const oversoldBonds = [];
+  const allResults = [];
   let processed = 0;
   let failed = 0;
 
@@ -338,6 +339,17 @@ function detectOversold(bonds, klineByBond) {
       const klineData = klineByBond[bond.bond_code] || null;
 
       if (!klineData || klineData.length < Math.max(CCI_PERIOD, WR_PERIOD)) {
+        allResults.push({
+          bond_code: bond.bond_code,
+          bond_name: bond.bond_name,
+          industry: bond.industry,
+          latest_amount: bond.latest_amount,
+          maturity_date: bond.maturity_date,
+          price: '',
+          cci: null,
+          wr: null,
+          error: true,
+        });
         failed++;
         continue;
       }
@@ -346,20 +358,42 @@ function detectOversold(bonds, klineByBond) {
       const wr = calculateWR(klineData);
 
       if (cci === null || wr === null) {
-        failed++;
-        continue;
-      }
-
-      if (cci < -100 && wr > 80) {
-        const latestKline = klineData[klineData.length - 1];
-        oversoldBonds.push({
+        allResults.push({
           bond_code: bond.bond_code,
           bond_name: bond.bond_name,
           industry: bond.industry,
           latest_amount: bond.latest_amount,
           maturity_date: bond.maturity_date,
-          price: parseFloat(latestKline.close).toFixed(3),
-          cci, wr,
+          price: '',
+          cci: null,
+          wr: null,
+          error: true,
+        });
+        failed++;
+        continue;
+      }
+
+      const latestKline = klineData[klineData.length - 1];
+      const price = parseFloat(latestKline.close).toFixed(3);
+
+      const result = {
+        bond_code: bond.bond_code,
+        bond_name: bond.bond_name,
+        industry: bond.industry,
+        latest_amount: bond.latest_amount,
+        maturity_date: bond.maturity_date,
+        price,
+        cci: +cci.toFixed(2),
+        wr: +wr.toFixed(2),
+        is_oversold: cci < -100 && wr > 80,
+      };
+      allResults.push(result);
+
+      if (result.is_oversold) {
+        oversoldBonds.push({
+          ...result,
+          cci,
+          wr,
         });
       }
 
@@ -369,11 +403,22 @@ function detectOversold(bonds, klineByBond) {
       }
     } catch (e) {
       console.error(`Error processing ${bond.bond_code}: ${e.message}`);
+      allResults.push({
+        bond_code: bond.bond_code,
+        bond_name: bond.bond_name,
+        industry: bond.industry,
+        latest_amount: bond.latest_amount,
+        maturity_date: bond.maturity_date,
+        price: '',
+        cci: null,
+        wr: null,
+        error: true,
+      });
       failed++;
     }
   }
 
-  return { oversoldBonds, processed, failed };
+  return { oversoldBonds, allResults, processed, failed };
 }
 
 /**
@@ -402,7 +447,62 @@ function groupKlineByBond(rows, dateField, highField, lowField, closeField) {
   return byBond;
 }
 
-// ---- Mode 入口 ----
+// ---- 写入 daily_strategy 表 ----
+
+async function saveStrategyResults(results, tradeDate) {
+  if (!results || results.length === 0) return;
+
+  let conn;
+  try {
+    conn = await mysql.createConnection(DB_CONFIG);
+
+    const batchSize = 100;
+    for (let i = 0; i < results.length; i += batchSize) {
+      const batch = results.slice(i, i + batchSize);
+
+      const placeholders = batch.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())').join(',\n');
+      const values = [];
+      for (const r of batch) {
+        values.push(tradeDate);
+        values.push('daily');
+        values.push(r.bond_code);
+        values.push(r.bond_name || '');
+        values.push(r.price ? parseFloat(r.price) : 0);
+        values.push(null); // change_pct not available
+        values.push(r.industry || '');
+        values.push(r.latest_amount ? parseFloat(r.latest_amount) : 0);
+        values.push(r.maturity_date || '');
+        values.push(r.cci);
+        values.push(r.wr != null ? Math.round(r.wr * 100) / 100 : null);
+        values.push(r.is_oversold ? 1 : 0);
+      }
+
+      const sql = `INSERT INTO daily_strategy
+        (trade_date, strategy_type, bond_code, bond_name, price, change_pct, industry, remain_scale, maturity_date, cci, wr, is_oversold, created_at, updated_at)
+        VALUES ${placeholders}
+        ON DUPLICATE KEY UPDATE
+          bond_name = VALUES(bond_name),
+          price = VALUES(price),
+          change_pct = VALUES(change_pct),
+          industry = VALUES(industry),
+          remain_scale = VALUES(remain_scale),
+          maturity_date = VALUES(maturity_date),
+          cci = VALUES(cci),
+          wr = VALUES(wr),
+          is_oversold = VALUES(is_oversold),
+          updated_at = NOW()`;
+
+      await conn.query(sql, values);
+      console.log(`Saved batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(results.length / batchSize)} (${batch.length} records)`);
+    }
+
+    console.log(`Successfully saved ${results.length} records to daily_strategy`);
+  } catch (e) {
+    console.error('Error saving strategy results:', e.message);
+  } finally {
+    if (conn) await conn.end();
+  }
+}
 
 async function runDailyMode() {
   console.log(`[${new Date().toISOString()}] CCI+WR Oversold Detection (Daily) Started`);
@@ -446,12 +546,16 @@ async function runDailyMode() {
     rawByBond[code] = sorted.slice(-30);
   }
 
-  const { oversoldBonds, processed, failed } = detectOversold(bonds, rawByBond);
+  const { oversoldBonds, allResults, processed, failed } = detectOversold(bonds, rawByBond);
   const elapsed = Math.round((Date.now() - startTime) / 1000);
 
   console.log(`[${new Date().toISOString()}] Daily Detection completed`);
   console.log(`  Processed: ${processed}, Failed: ${failed}`);
   console.log(`  Oversold bonds found: ${oversoldBonds.length}`);
+
+  // 保存所有债券的 CCI/WR 到 daily_strategy 表
+  const todayStr = new Date().toISOString().slice(0, 10);
+  await saveStrategyResults(allResults, todayStr);
 
   try {
     await sendFeishuNotification(oversoldBonds, elapsed, 'daily');
@@ -478,12 +582,16 @@ async function runWeeklyMode() {
 
   const klineByBond = groupKlineByBond(weeklyAll, 'trade_week', 'high', 'low', 'close');
 
-  const { oversoldBonds, processed, failed } = detectOversold(bonds, klineByBond);
+  const { oversoldBonds, allResults, processed, failed } = detectOversold(bonds, klineByBond);
   const elapsed = Math.round((Date.now() - startTime) / 1000);
 
   console.log(`[${new Date().toISOString()}] Weekly Detection completed`);
   console.log(`  Processed: ${processed}, Failed: ${failed}`);
   console.log(`  Weekly oversold bonds found: ${oversoldBonds.length}`);
+
+  // 保存所有债券的 CCI/WR 到 daily_strategy 表
+  const todayStr = new Date().toISOString().slice(0, 10);
+  await saveStrategyResults(allResults, todayStr);
 
   try {
     await sendFeishuNotification(oversoldBonds, elapsed, 'weekly');

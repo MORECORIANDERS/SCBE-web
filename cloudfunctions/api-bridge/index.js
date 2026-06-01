@@ -178,7 +178,35 @@ async function getPriceDistribution() {
 }
 
 async function getOversold() {
-  return []
+  return getStrategyBonds('daily')
+}
+
+async function getStrategyBonds(strategyType) {
+  const latestDate = await queryLatestDate('daily_strategy')
+  if (!latestDate) return []
+
+  const [rows] = await pool.query(
+    `SELECT bond_code, bond_name, price, change_pct, industry,
+            remain_scale, maturity_date, cci, wr, is_oversold, amount_yi
+     FROM daily_strategy
+     WHERE trade_date = ? AND strategy_type = ?
+     ORDER BY is_oversold DESC, wr DESC`,
+    [latestDate, strategyType]
+  )
+
+  return rows.map(r => ({
+    bond_code: r.bond_code,
+    bond_name: r.bond_name,
+    price: parseFloat(r.price) || 0,
+    change_percent: parseFloat(r.change_pct) || 0,
+    is_oversold: r.is_oversold === 1,
+    industry: r.industry || '',
+    remain_scale: parseFloat(r.remain_scale) || 0,
+    maturity_date: r.maturity_date || '',
+    cci: r.cci !== null ? parseFloat(r.cci) : 0,
+    wr: r.wr !== null ? parseFloat(r.wr) : 0,
+    amount_yi: parseFloat(r.amount_yi) || 0,
+  }))
 }
 
 exports.main = async function (event) {
@@ -227,6 +255,16 @@ exports.main = async function (event) {
         return successResponse({ success: true, data }, corsHeaders)
       }
 
+      case '/api/strategy-weekly': {
+        const data = await getStrategyBonds('weekly')
+        return successResponse({ success: true, data }, corsHeaders)
+      }
+
+      case '/api/strategy-volume': {
+        const data = await getStrategyBonds('volume')
+        return successResponse({ success: true, data }, corsHeaders)
+      }
+
       case '/api/refresh': {
         console.log('🔄 [api-bridge] Calling cb_snapshot_updater with action=refresh...')
         const funcResult = await tcbApp.callFunction({
@@ -238,6 +276,34 @@ exports.main = async function (event) {
           success: true,
           data: funcResult,
         }, corsHeaders)
+      }
+
+      case '/api/trigger-daily-oversold': {
+        console.log('🔄 [api-bridge] Calling cb_oversold_detector (daily)...')
+        const dailyResult = await tcbApp.callFunction({
+          name: 'cb_oversold_detector',
+          data: { mode: 'daily' },
+        })
+        console.log('✅ [api-bridge] cb_oversold_detector result:', JSON.stringify(dailyResult).slice(0, 200))
+        return successResponse({ success: true, data: dailyResult }, corsHeaders)
+      }
+
+      case '/api/trigger-weekly-oversold': {
+        console.log('🔄 [api-bridge] Calling cb_oversold_detector_weekly...')
+        const weeklyResult = await tcbApp.callFunction({
+          name: 'cb_oversold_detector_weekly',
+        })
+        console.log('✅ [api-bridge] cb_oversold_detector_weekly result:', JSON.stringify(weeklyResult).slice(0, 200))
+        return successResponse({ success: true, data: weeklyResult }, corsHeaders)
+      }
+
+      case '/api/trigger-volume-filter': {
+        console.log('🔄 [api-bridge] Calling cb_volume_filter...')
+        const volResult = await tcbApp.callFunction({
+          name: 'cb_volume_filter',
+        })
+        console.log('✅ [api-bridge] cb_volume_filter result:', JSON.stringify(volResult).slice(0, 200))
+        return successResponse({ success: true, data: volResult }, corsHeaders)
       }
 
       case '/api/all': {

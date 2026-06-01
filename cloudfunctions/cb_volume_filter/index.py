@@ -152,6 +152,43 @@ def send_feishu(title, content):
         return False
 
 
+def save_to_strategy_table(conn, results, today_str):
+    """将成交额异动结果保存到 daily_strategy 表"""
+    if not results:
+        return
+    cur = conn.cursor()
+    insert_sql = """
+        INSERT INTO daily_strategy
+            (trade_date, strategy_type, bond_code, bond_name, price, change_pct, industry, remain_scale, maturity_date, cci, wr, is_oversold, amount_yi, created_at, updated_at)
+        VALUES (%s, 'volume', %s, %s, %s, NULL, %s, %s, %s, NULL, NULL, 0, %s, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE
+            bond_name = VALUES(bond_name),
+            price = VALUES(price),
+            industry = VALUES(industry),
+            remain_scale = VALUES(remain_scale),
+            maturity_date = VALUES(maturity_date),
+            amount_yi = VALUES(amount_yi),
+            updated_at = NOW()
+    """
+    for r in results:
+        try:
+            cur.execute(insert_sql, (
+                today_str,
+                r['bond_code'],
+                r['bond_name'],
+                r['price'],
+                r['industry'],
+                r['remaining_scale'],
+                r['maturity_date'],
+                r['amount_yi']
+            ))
+        except Exception as e:
+            print(f"[保存失败] {r['bond_code']}: {e}")
+    conn.commit()
+    cur.close()
+    print(f"[cb_volume_filter] 已保存 {len(results)} 条记录到 daily_strategy(volume)")
+
+
 def main(event, context):
     """云函数入口"""
     print('[cb_volume_filter] 开始执行...')
@@ -163,9 +200,12 @@ def main(event, context):
         today_str = today.strftime('%Y-%m-%d')
 
         results = filter_volume_anomalies(conn, today)
-        conn.close()
 
         print(f'[cb_volume_filter] 筛选结果: {len(results)} 只转债')
+
+        save_to_strategy_table(conn, results, today_str)
+
+        conn.close()
 
         content = format_feishu_card(results, today_str)
         send_feishu('📈 可转债成交额异动提醒', content)

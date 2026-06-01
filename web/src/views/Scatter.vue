@@ -1,29 +1,56 @@
 <script setup lang="ts">
-import { ref, computed, h } from 'vue'
-import { Tag, Select, Input, InputNumber } from 'ant-design-vue'
+import { ref, computed, h, onMounted, watch } from 'vue'
+import { Tag, Tabs, Select, Input, InputNumber, message } from 'ant-design-vue'
 import NavTabs from '@/components/common/NavTabs.vue'
 import BottomNav from '@/components/common/BottomNav.vue'
+import { fetchOversold, fetchStrategyWeekly, fetchStrategyVolume } from '@/api'
+import type { OversoldBond } from '@/api'
 
-interface OversoldBond {
-  bond_code: string
-  bond_name: string
-  price: string
-  change_percent: number
-  is_oversold: boolean
-  industry: string
-  remain_scale: number
-  maturity_date: string
-  cci: number
-  wr: number
-}
+type TabKey = 'daily' | 'weekly' | 'volume'
 
+const activeTab = ref<TabKey>('daily')
 const rawData = ref<OversoldBond[]>([])
+const loading = ref(false)
 
 const searchText = ref('')
 const filterIndustry = ref<string | undefined>(undefined)
 const filterOversold = ref<string | undefined>(undefined)
 const filterScaleMin = ref<number | undefined>(undefined)
 const filterScaleMax = ref<number | undefined>(undefined)
+
+const apiMap: Record<TabKey, () => Promise<OversoldBond[]>> = {
+  daily: fetchOversold,
+  weekly: fetchStrategyWeekly,
+  volume: fetchStrategyVolume
+}
+
+async function fetchData() {
+  loading.value = true
+  try {
+    const api = apiMap[activeTab.value]
+    if (!api) return
+    const data = await api()
+    rawData.value = data
+  } catch (e) {
+    console.error('获取数据失败:', e)
+    message.error('获取策略数据失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchData()
+})
+
+watch(activeTab, () => {
+  searchText.value = ''
+  filterIndustry.value = undefined
+  filterOversold.value = undefined
+  filterScaleMin.value = undefined
+  filterScaleMax.value = undefined
+  fetchData()
+})
 
 const industryOptions = computed(() => {
   const set = new Set(rawData.value.map(d => d.industry))
@@ -39,9 +66,9 @@ const filteredData = computed(() => {
   if (filterIndustry.value) {
     list = list.filter(d => d.industry === filterIndustry.value)
   }
-  if (filterOversold.value === 'yes') {
+  if (activeTab.value !== 'volume' && filterOversold.value === 'yes') {
     list = list.filter(d => d.is_oversold)
-  } else if (filterOversold.value === 'no') {
+  } else if (activeTab.value !== 'volume' && filterOversold.value === 'no') {
     list = list.filter(d => !d.is_oversold)
   }
   if (filterScaleMin.value !== undefined) {
@@ -53,92 +80,117 @@ const filteredData = computed(() => {
   return list
 })
 
-const oversoldColumns = [
-  {
-    title: '转债名称',
-    dataIndex: 'bond_name',
-    key: 'bond_name',
-    fixed: 'left' as const,
-    width: 100,
-  },
-  {
-    title: '价格',
-    dataIndex: 'price',
-    key: 'price',
-    align: 'center' as const,
-    width: 70,
-  },
-  {
-    title: '涨跌幅',
-    dataIndex: 'change_percent',
-    key: 'change_percent',
-    align: 'center' as const,
-    width: 80,
-    sorter: (a: OversoldBond, b: OversoldBond) => a.change_percent - b.change_percent,
-    customRender: ({ text }: { text: number }) => {
-      const color = text >= 0 ? '#ff4d4f' : '#52c41a'
-      const prefix = text >= 0 ? '+' : ''
-      return h('span', { style: { color, fontWeight: 500 } }, `${prefix}${text.toFixed(2)}%`)
+function isOversoldColumns() {
+  return activeTab.value === 'daily' || activeTab.value === 'weekly'
+}
+
+const columns = computed(() => {
+  const common: any[] = [
+    {
+      title: '转债名称',
+      dataIndex: 'bond_name',
+      key: 'bond_name',
+      fixed: 'left' as const,
+      width: 100,
     },
-  },
-  {
-    title: '超卖',
-    dataIndex: 'is_oversold',
-    key: 'is_oversold',
-    align: 'center' as const,
-    width: 60,
-    customRender: ({ text }: { text: boolean }) => {
-      return h(Tag, { color: text ? 'red' : 'default' }, () => text ? '是' : '否')
+    {
+      title: '价格',
+      dataIndex: 'price',
+      key: 'price',
+      align: 'center' as const,
+      width: 70,
     },
-  },
-  {
-    title: '行业',
-    dataIndex: 'industry',
-    key: 'industry',
-    align: 'center' as const,
-    width: 80,
-  },
-  {
-    title: '剩余规模',
-    dataIndex: 'remain_scale',
-    key: 'remain_scale',
-    align: 'center' as const,
-    width: 80,
-    sorter: (a: OversoldBond, b: OversoldBond) => a.remain_scale - b.remain_scale,
-    customRender: ({ text }: { text: number }) => {
-      return h('span', {}, `${text.toFixed(2)}亿`)
+    {
+      title: '涨跌幅',
+      dataIndex: 'change_percent',
+      key: 'change_percent',
+      align: 'center' as const,
+      width: 80,
+      sorter: (a: OversoldBond, b: OversoldBond) => a.change_percent - b.change_percent,
+      customRender: ({ text }: { text: number }) => {
+        const color = text >= 0 ? '#ff4d4f' : '#52c41a'
+        const prefix = text >= 0 ? '+' : ''
+        return h('span', { style: { color, fontWeight: 500 } }, `${prefix}${text.toFixed(2)}%`)
+      },
     },
-  },
-  {
-    title: '到期日期',
-    dataIndex: 'maturity_date',
-    key: 'maturity_date',
-    align: 'center' as const,
-    width: 100,
-  },
-  {
-    title: 'CCI',
-    dataIndex: 'cci',
-    key: 'cci',
-    align: 'center' as const,
-    width: 80,
-    sorter: (a: OversoldBond, b: OversoldBond) => a.cci - b.cci,
-    customRender: ({ text }: { text: number }) => {
-      return h(Tag, { color: text < -100 ? 'red' : 'default' }, () => text.toFixed(2))
+    {
+      title: '行业',
+      dataIndex: 'industry',
+      key: 'industry',
+      align: 'center' as const,
+      width: 80,
     },
-  },
-  {
-    title: 'WR',
-    dataIndex: 'wr',
-    key: 'wr',
-    align: 'center' as const,
-    width: 80,
-    sorter: (a: OversoldBond, b: OversoldBond) => a.wr - b.wr,
-    customRender: ({ text }: { text: number }) => {
-      return h(Tag, { color: text > 80 ? 'red' : 'default' }, () => text.toFixed(2))
+    {
+      title: '剩余规模',
+      dataIndex: 'remain_scale',
+      key: 'remain_scale',
+      align: 'center' as const,
+      width: 80,
+      sorter: (a: OversoldBond, b: OversoldBond) => a.remain_scale - b.remain_scale,
+      customRender: ({ text }: { text: number }) => {
+        return h('span', {}, `${text.toFixed(2)}亿`)
+      },
     },
-  },
-]
+    {
+      title: '到期日期',
+      dataIndex: 'maturity_date',
+      key: 'maturity_date',
+      align: 'center' as const,
+      width: 100,
+    },
+  ]
+
+  if (isOversoldColumns()) {
+    common.push(
+      {
+        title: '超卖',
+        dataIndex: 'is_oversold',
+        key: 'is_oversold',
+        align: 'center' as const,
+        width: 60,
+        customRender: ({ text }: { text: boolean }) => {
+          return h(Tag, { color: text ? 'red' : 'default' }, () => text ? '是' : '否')
+        },
+      },
+      {
+        title: 'CCI',
+        dataIndex: 'cci',
+        key: 'cci',
+        align: 'center' as const,
+        width: 80,
+        sorter: (a: OversoldBond, b: OversoldBond) => a.cci - b.cci,
+        customRender: ({ text }: { text: number }) => {
+          return h(Tag, { color: text < -100 ? 'red' : 'default' }, () => text.toFixed(2))
+        },
+      },
+      {
+        title: 'WR',
+        dataIndex: 'wr',
+        key: 'wr',
+        align: 'center' as const,
+        width: 80,
+        sorter: (a: OversoldBond, b: OversoldBond) => a.wr - b.wr,
+        customRender: ({ text }: { text: number }) => {
+          return h(Tag, { color: text > 80 ? 'red' : 'default' }, () => text.toFixed(2))
+        },
+      }
+    )
+  } else {
+    common.push({
+      title: '成交额(亿)',
+      dataIndex: 'amount_yi',
+      key: 'amount_yi',
+      align: 'center' as const,
+      width: 100,
+      sorter: (a: OversoldBond, b: OversoldBond) => a.amount_yi - b.amount_yi,
+      customRender: ({ text }: { text: number }) => {
+        return h('span', { style: { fontWeight: 500 } }, text.toFixed(4))
+      },
+    })
+  }
+
+  return common
+})
 </script>
 
 <template>
@@ -149,6 +201,11 @@ const oversoldColumns = [
       <div class="page-container">
         <div class="page-header">
           <h1 class="page-title">策略分析</h1>
+          <Tabs v-model:activeKey="activeTab" @change="fetchData" size="small">
+            <Tabs.TabPane key="daily" tab="日线超卖" />
+            <Tabs.TabPane key="weekly" tab="周线超卖" />
+            <Tabs.TabPane key="volume" tab="成交额2倍" />
+          </Tabs>
         </div>
 
         <section class="section">
@@ -169,6 +226,7 @@ const oversoldColumns = [
               allow-clear
             />
             <Select
+              v-if="activeTab !== 'volume'"
               v-model:value="filterOversold"
               placeholder="是否超卖"
               style="width: 120px"
@@ -203,7 +261,7 @@ const oversoldColumns = [
           <div v-if="filteredData.length > 0">
             <div class="table-wrapper">
               <a-table
-                :columns="oversoldColumns"
+                :columns="columns"
                 :data-source="filteredData"
                 :pagination="{ pageSize: 20 }"
                 :row-key="(record: OversoldBond) => record.bond_code"
@@ -214,7 +272,7 @@ const oversoldColumns = [
             </div>
           </div>
           <div v-else class="empty-state">
-            <a-tag color="blue">暂无匹配数据</a-tag>
+            <a-tag color="blue">{{ loading ? '加载中...' : '暂无匹配数据' }}</a-tag>
           </div>
         </section>
       </div>

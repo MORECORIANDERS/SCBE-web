@@ -52,6 +52,20 @@ export interface PriceDistribution {
   amount_median: number
 }
 
+export interface OversoldBond {
+  bond_code: string
+  bond_name: string
+  price: number
+  change_percent: number
+  is_oversold: boolean
+  industry: string
+  remain_scale: number
+  maturity_date: string
+  cci: number
+  wr: number
+  amount_yi: number
+}
+
 export interface AllData {
   marketStats: MarketStats | null
   bonds: BondItem[]
@@ -98,4 +112,28 @@ export async function fetchAll(): Promise<AllData> {
 
 export async function refreshData(): Promise<any> {
   return request<any>('/api/refresh')
+}
+
+export async function triggerDailyOversold(): Promise<any> {
+  return request<any>('/api/trigger-daily-oversold')
+}
+
+export async function triggerWeeklyOversold(): Promise<any> {
+  return request<any>('/api/trigger-weekly-oversold')
+}
+
+export async function triggerVolumeFilter(): Promise<any> {
+  return request<any>('/api/trigger-volume-filter')
+}
+
+export async function fetchOversold(): Promise<OversoldBond[]> {
+  return request<OversoldBond[]>('/api/oversold')
+}
+
+export async function fetchStrategyWeekly(): Promise<OversoldBond[]> {
+  return request<OversoldBond[]>('/api/strategy-weekly')
+}
+
+export async function fetchStrategyVolume(): Promise<OversoldBond[]> {
+  return request<OversoldBond[]>('/api/strategy-volume')
 }

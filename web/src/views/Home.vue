@@ -163,7 +163,7 @@ const quickEntries = [
   { icon: StarOutlined, label: '自选转债', path: '/' },
   { icon: SearchOutlined, label: '高级筛选', path: '/scatter' },
   { icon: WarningOutlined, label: '强赎预警', action: () => message.info('强赎预警功能开发中') },
-  { icon: SettingOutlined, label: '系统设置', path: '/settings' }
+  { icon: SettingOutlined, label: '系统配置', path: '/control' }
 ]
 
 const activeMetric = ref<string>('risefall')

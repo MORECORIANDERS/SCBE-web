@@ -5,7 +5,6 @@ import {
   HomeOutlined,
   AppstoreOutlined,
   LineChartOutlined,
-  SettingOutlined,
   ControlOutlined
 } from '@ant-design/icons-vue'
 
@@ -16,8 +15,7 @@ const tabs = [
   { key: 'home', label: '首页', path: '/', icon: HomeOutlined },
   { key: 'heatmap', label: '行业', path: '/heatmap', icon: AppstoreOutlined },
   { key: 'scatter', label: '策略', path: '/scatter', icon: LineChartOutlined },
-  { key: 'control', label: '控制', path: '/control', icon: ControlOutlined },
-  { key: 'settings', label: '配置', path: '/settings', icon: SettingOutlined }
+  { key: 'control', label: '配置', path: '/control', icon: ControlOutlined }
 ]
 
 const activeKey = computed(() => {

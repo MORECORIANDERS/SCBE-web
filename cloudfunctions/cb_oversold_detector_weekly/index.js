@@ -1,16 +1,3 @@
-/**
- * 可转债【周线】CCI+WR双超卖检测云函数
- * =====================================
- * 触发时间：每天 15:40
- * 功能：
- *   1. 从 bond_weekly_kline 获取最近14周数据
- *   2. 计算周线 CCI 和 WR 指标
- *   3. 筛选满足双超卖条件的可转债（CCI < -100 且 WR > 80）
- *   4. 通过飞书机器人发送详细卡片
- *
- * 本函数与 cb_oversold_detector 共用检测逻辑，默认以 weekly 模式运行。
- */
-
 const https = require('https');
 const mysql = require('mysql2/promise');
 
@@ -140,21 +127,14 @@ function sendFeishuNotification(bonds, elapsed) {
       resolve(null);
       return;
     }
-
     const sortedBonds = [...bonds].sort((a, b) => parseFloat(a.latest_amount || 0) - parseFloat(b.latest_amount || 0));
     let elementsContent = '';
     sortedBonds.forEach((bond, index) => {
-      const industry = bond.industry || '-';
-      const remainScale = bond.latest_amount ? `${parseFloat(bond.latest_amount).toFixed(2)}亿` : '-';
-      const maturity = bond.maturity_date || '-';
-
       elementsContent += `${index + 1}. **${bond.bond_name}**（${bond.bond_code}）\n`;
-      elementsContent += `   行业: ${industry} | 剩余规模: ${remainScale} | 到期: ${maturity}\n`;
+      elementsContent += `   行业: ${bond.industry || '-'} | 剩余规模: ${bond.latest_amount ? parseFloat(bond.latest_amount).toFixed(2) + '亿' : '-'} | 到期: ${bond.maturity_date || '-'}\n`;
       elementsContent += `   CCI: ${bond.cci.toFixed(2)} | WR: ${bond.wr.toFixed(2)} | 价格: ${bond.price}\n\n`;
     });
-
     const beijingTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-
     const payload = JSON.stringify({
       msg_type: 'interactive',
       card: {
@@ -168,13 +148,11 @@ function sendFeishuNotification(bonds, elapsed) {
         ],
       },
     });
-
     const url = new URL(FEISHU_WEBHOOK);
     const options = {
       hostname: url.hostname, path: url.pathname, method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
     };
-
     const req = https.request(options, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
@@ -214,27 +192,79 @@ function groupKlineByBond(rows, dateField, highField, lowField, closeField) {
 
 function detectOversold(bonds, klineByBond) {
   const oversoldBonds = [];
+  const allResults = [];
   let processed = 0, failed = 0;
   for (const bond of bonds) {
     try {
       const klineData = klineByBond[bond.bond_code] || null;
-      if (!klineData || klineData.length < Math.max(CCI_PERIOD, WR_PERIOD)) { failed++; continue; }
+      if (!klineData || klineData.length < Math.max(CCI_PERIOD, WR_PERIOD)) {
+        allResults.push({ bond_code: bond.bond_code, bond_name: bond.bond_name, industry: bond.industry, latest_amount: bond.latest_amount, maturity_date: bond.maturity_date, price: '', cci: null, wr: null });
+        failed++; continue;
+      }
       const cci = calculateCCI(klineData);
       const wr = calculateWR(klineData);
-      if (cci === null || wr === null) { failed++; continue; }
-      if (cci < -100 && wr > 80) {
-        const latestKline = klineData[klineData.length - 1];
-        oversoldBonds.push({
-          bond_code: bond.bond_code, bond_name: bond.bond_name,
-          industry: bond.industry, latest_amount: bond.latest_amount,
-          maturity_date: bond.maturity_date, price: parseFloat(latestKline.close).toFixed(3), cci, wr,
-        });
+      if (cci === null || wr === null) {
+        allResults.push({ bond_code: bond.bond_code, bond_name: bond.bond_name, industry: bond.industry, latest_amount: bond.latest_amount, maturity_date: bond.maturity_date, price: '', cci: null, wr: null });
+        failed++; continue;
+      }
+      const latestKline = klineData[klineData.length - 1];
+      const price = parseFloat(latestKline.close).toFixed(3);
+      const result = { bond_code: bond.bond_code, bond_name: bond.bond_name, industry: bond.industry, latest_amount: bond.latest_amount, maturity_date: bond.maturity_date, price, cci: +cci.toFixed(2), wr: +wr.toFixed(2), is_oversold: cci < -100 && wr > 80 };
+      allResults.push(result);
+      if (result.is_oversold) {
+        oversoldBonds.push({ ...result, cci, wr });
       }
       processed++;
       if (processed % 50 === 0) console.log(`Progress: ${processed}/${bonds.length}, Oversold: ${oversoldBonds.length}`);
-    } catch (e) { console.error(`Error processing ${bond.bond_code}: ${e.message}`); failed++; }
+    } catch (e) {
+      console.error(`Error processing ${bond.bond_code}: ${e.message}`);
+      allResults.push({ bond_code: bond.bond_code, bond_name: bond.bond_name, industry: bond.industry, latest_amount: bond.latest_amount, maturity_date: bond.maturity_date, price: '', cci: null, wr: null });
+      failed++;
+    }
   }
-  return { oversoldBonds, processed, failed };
+  return { oversoldBonds, allResults, processed, failed };
+}
+
+async function saveStrategyResults(results, tradeDate) {
+  if (!results || results.length === 0) return;
+  let conn;
+  try {
+    conn = await mysql.createConnection(DB_CONFIG);
+    const batchSize = 100;
+    for (let i = 0; i < results.length; i += batchSize) {
+      const batch = results.slice(i, i + batchSize);
+      const placeholders = batch.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())').join(',\n');
+      const values = [];
+      for (const r of batch) {
+        values.push(tradeDate);
+        values.push('weekly');
+        values.push(r.bond_code);
+        values.push(r.bond_name || '');
+        values.push(r.price ? parseFloat(r.price) : 0);
+        values.push(null);
+        values.push(r.industry || '');
+        values.push(r.latest_amount ? parseFloat(r.latest_amount) : 0);
+        values.push(r.maturity_date || '');
+        values.push(r.cci);
+        values.push(r.wr != null ? Math.round(r.wr * 100) / 100 : null);
+        values.push(r.is_oversold ? 1 : 0);
+      }
+      const sql = `INSERT INTO daily_strategy
+        (trade_date, strategy_type, bond_code, bond_name, price, change_pct, industry, remain_scale, maturity_date, cci, wr, is_oversold, created_at, updated_at)
+        VALUES ${placeholders}
+        ON DUPLICATE KEY UPDATE
+          bond_name = VALUES(bond_name), price = VALUES(price), industry = VALUES(industry),
+          remain_scale = VALUES(remain_scale), maturity_date = VALUES(maturity_date),
+          cci = VALUES(cci), wr = VALUES(wr), is_oversold = VALUES(is_oversold), updated_at = NOW()`;
+      await conn.query(sql, values);
+      console.log(`Saved batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(results.length / batchSize)} (${batch.length} records)`);
+    }
+    console.log(`Successfully saved ${results.length} records to daily_strategy (weekly)`);
+  } catch (e) {
+    console.error('Error saving strategy results:', e.message);
+  } finally {
+    if (conn) await conn.end();
+  }
 }
 
 let startTime;
@@ -244,22 +274,21 @@ exports.main = async (event, context) => {
   try {
     console.log(`[${new Date().toISOString()}] Weekly CCI+WR Oversold Detection Started`);
 
-    console.log('Fetching bond list...');
     const bonds = await getBondList();
     console.log(`Found ${bonds.length} active bonds`);
 
-    console.log('Loading weekly kline data...');
     const { weeklyAll } = await loadWeeklyKlineData();
     const klineByBond = groupKlineByBond(weeklyAll, 'trade_week', 'high', 'low', 'close');
 
-    const { oversoldBonds, processed, failed } = detectOversold(bonds, klineByBond);
+    const { oversoldBonds, allResults, processed, failed } = detectOversold(bonds, klineByBond);
     const elapsed = Math.round((Date.now() - startTime) / 1000);
 
-    console.log(`[${new Date().toISOString()}] Weekly Detection completed`);
-    console.log(`  Processed: ${processed}, Failed: ${failed}`);
-    console.log(`  Weekly oversold bonds found: ${oversoldBonds.length}`);
+    console.log(`Weekly Detection: Processed ${processed}, Failed ${failed}, Oversold ${oversoldBonds.length}`);
 
-    try { await sendFeishuNotification(oversoldBonds, elapsed); } catch (e) { console.error('Feishu notification error:', e.message); }
+    const todayStr = new Date().toISOString().slice(0, 10);
+    await saveStrategyResults(allResults, todayStr);
+
+    try { await sendFeishuNotification(oversoldBonds, elapsed); } catch (e) { console.error('Feishu error:', e.message); }
 
     return {
       success: true, total: bonds.length, processed, failed,
