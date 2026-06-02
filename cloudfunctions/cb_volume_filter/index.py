@@ -41,7 +41,9 @@ SELECT
     s.price,
     s.change_pct,
     s.amount,
-    s.amount / 100000000 AS amount_yi
+    s.amount / 100000000 AS amount_yi,
+    hist.avg_amount_5d / 100000000 AS avg_amount_yi,
+    s.amount / hist.avg_amount_5d AS volume_ratio
 FROM bond_snapshot s
 LEFT JOIN bond_static st ON s.bond_code = st.bond_code
 LEFT JOIN sina_stock_info si ON CAST(st.stock_code_no_suffix AS CHAR) = CAST(si.stock_code AS CHAR)
@@ -94,7 +96,9 @@ def filter_volume_anomalies(conn, today):
             'remaining_scale': float(row[6]) if row[6] else 0,
             'price': float(row[7]) if row[7] else 0,
             'change_pct': float(row[8]) if row[8] else None,
-            'amount_yi': round(float(row[10]), 4) if row[10] else 0
+            'amount_yi': round(float(row[10]), 4) if row[10] else 0,
+            'avg_amount_yi': round(float(row[11]), 4) if row[11] else 0,
+            'volume_ratio': round(float(row[12]), 2) if row[12] else 0
         })
 
     return results
@@ -166,8 +170,8 @@ def save_to_strategy_table(conn, results, today_str):
     cur = conn.cursor()
     insert_sql = """
         INSERT INTO daily_strategy
-            (trade_date, strategy_type, bond_code, bond_name, price, change_pct, industry, industry_level1, industry_level2, industry_level3, remain_scale, maturity_date, cci, wr, is_oversold, amount_yi, created_at, updated_at)
-        VALUES (%s, 'volume', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NULL, NULL, 0, %s, NOW(), NOW())
+            (trade_date, strategy_type, bond_code, bond_name, price, change_pct, industry, industry_level1, industry_level2, industry_level3, remain_scale, maturity_date, cci, wr, is_oversold, amount_yi, avg_amount_yi, volume_ratio, created_at, updated_at)
+        VALUES (%s, 'volume', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NULL, NULL, 0, %s, %s, %s, NOW(), NOW())
         ON DUPLICATE KEY UPDATE
             bond_name = VALUES(bond_name),
             price = VALUES(price),
@@ -179,6 +183,8 @@ def save_to_strategy_table(conn, results, today_str):
             remain_scale = VALUES(remain_scale),
             maturity_date = VALUES(maturity_date),
             amount_yi = VALUES(amount_yi),
+            avg_amount_yi = VALUES(avg_amount_yi),
+            volume_ratio = VALUES(volume_ratio),
             updated_at = NOW()
     """
     for r in results:
@@ -195,7 +201,9 @@ def save_to_strategy_table(conn, results, today_str):
                 r['industry_level3'],
                 r['remaining_scale'],
                 r['maturity_date'],
-                r['amount_yi']
+                r['amount_yi'],
+                r['avg_amount_yi'],
+                r['volume_ratio']
             ))
         except Exception as e:
             print(f"[保存失败] {r['bond_code']}: {e}")

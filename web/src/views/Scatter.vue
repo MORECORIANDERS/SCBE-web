@@ -129,14 +129,14 @@ const columns = computed(() => {
       dataIndex: 'industry_level2',
       key: 'industry_level2',
       align: 'center' as const,
-      width: 80,
+      width: 90,
     },
     {
       title: '行业三级',
       dataIndex: 'industry_level3',
       key: 'industry_level3',
       align: 'center' as const,
-      width: 80,
+      width: 130
     },
     {
       title: '剩余规模',
@@ -194,17 +194,42 @@ const columns = computed(() => {
       }
     )
   } else {
-    common.push({
-      title: '成交额(亿)',
-      dataIndex: 'amount_yi',
-      key: 'amount_yi',
-      align: 'center' as const,
-      width: 100,
-      sorter: (a: OversoldBond, b: OversoldBond) => a.amount_yi - b.amount_yi,
-      customRender: ({ text }: { text: number }) => {
-        return h('span', { style: { fontWeight: 500 } }, (text ?? 0).toFixed(4))
+    common.splice(3, 0,
+      {
+        title: '成交额(亿)',
+        dataIndex: 'amount_yi',
+        key: 'amount_yi',
+        align: 'center' as const,
+        width: 90,
+        sorter: (a: OversoldBond, b: OversoldBond) => a.amount_yi - b.amount_yi,
+        customRender: ({ text }: { text: number }) => {
+          return h('span', { style: { fontWeight: 500 } }, (text ?? 0).toFixed(3))
+        },
       },
-    })
+      {
+        title: '前5日均额(亿)',
+        dataIndex: 'avg_amount_yi',
+        key: 'avg_amount_yi',
+        align: 'center' as const,
+        width: 90,
+        sorter: (a: OversoldBond, b: OversoldBond) => a.avg_amount_yi - b.avg_amount_yi,
+        customRender: ({ text }: { text: number }) => {
+          return h('span', {}, (text ?? 0).toFixed(4))
+        },
+      },
+      {
+        title: '倍数',
+        dataIndex: 'volume_ratio',
+        key: 'volume_ratio',
+        align: 'center' as const,
+        width: 60,
+        sorter: (a: OversoldBond, b: OversoldBond) => a.volume_ratio - b.volume_ratio,
+        customRender: ({ text }: { text: number }) => {
+          const val = text ?? 0
+          return h('span', { style: { color: val >= 2 ? '#ff4d4f' : 'inherit', fontWeight: 500 } }, `${val.toFixed(2)}x`)
+        },
+      },
+    )
   }
 
   return common

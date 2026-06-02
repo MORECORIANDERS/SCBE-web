@@ -212,7 +212,8 @@ async function getStrategyBonds(strategyType) {
   const [rows] = await pool.query(
     `SELECT bond_code, bond_name, price, change_pct, industry,
             industry_level1, industry_level2, industry_level3,
-            remain_scale, maturity_date, cci, wr, is_oversold, amount_yi
+            remain_scale, maturity_date, cci, wr, is_oversold, amount_yi,
+            avg_amount_yi, volume_ratio
      FROM daily_strategy
      WHERE trade_date = ? AND strategy_type = ?
      ORDER BY is_oversold DESC, wr DESC`,
@@ -234,6 +235,8 @@ async function getStrategyBonds(strategyType) {
     cci: r.cci !== null ? parseFloat(r.cci) : 0,
     wr: r.wr !== null ? parseFloat(r.wr) : 0,
     amount_yi: parseFloat(r.amount_yi) || 0,
+    avg_amount_yi: parseFloat(r.avg_amount_yi) || 0,
+    volume_ratio: parseFloat(r.volume_ratio) || 0,
   }))
 }
 

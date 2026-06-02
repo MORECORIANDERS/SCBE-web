@@ -67,6 +67,8 @@ export interface OversoldBond {
   cci: number
   wr: number
   amount_yi: number
+  avg_amount_yi: number
+  volume_ratio: number
 }
 
 export interface AllData {
