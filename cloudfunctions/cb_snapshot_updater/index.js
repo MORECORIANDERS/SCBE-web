@@ -730,9 +730,14 @@ async function refreshCollect() {
     // 拉取原始快照数据，在 JS 中完成所有聚合（含正确的中位数计算）
     const [snapshots] = await conn.query(
       `SELECT s.bond_code, s.price, s.change_pct, s.amount,
-              COALESCE(st.industry_level1, s.industry1, '未知') as industry
+              COALESCE(
+                JSON_UNQUOTE(JSON_EXTRACT(si.industry, '$[0]."名称"')),
+                s.industry1,
+                '未知'
+              ) as industry
        FROM bond_snapshot s
        LEFT JOIN bond_static st ON s.bond_code = st.bond_code
+       LEFT JOIN sina_stock_info si ON CAST(st.stock_code_no_suffix AS CHAR) = CAST(si.stock_code AS CHAR)
        WHERE s.trade_date = ?`,
       [tradeDate]
     );

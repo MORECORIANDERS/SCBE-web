@@ -27,6 +27,7 @@ const pool = mysql.createPool({
 
 const ALLOWED_ORIGINS = [
   'https://morecorianders.github.io',
+  'https://python12-9guk780v324f024d.tcb.qcloud.la',
   'http://localhost:5173',
   'http://localhost:4173',
 ]
@@ -103,13 +104,18 @@ async function getBonds() {
 
   const [rows] = await pool.query(
     `SELECT s.bond_code, s.bond_name, s.price, s.change_pct, s.amount,
-            COALESCE(st.industry_level1, s.industry1, '') as industry1,
+            COALESCE(
+              JSON_UNQUOTE(JSON_EXTRACT(si.industry, '$[0]."名称"')),
+              s.industry1,
+              ''
+            ) as industry1,
             COALESCE(st.industry_level2, '') as industry2,
             COALESCE(st.sector, s.sector, '') as sector,
             COALESCE(st.maturity_date, '') as maturity_date,
             COALESCE(st.latest_amount, 0) as latest_amount
      FROM bond_snapshot s
      LEFT JOIN bond_static st ON s.bond_code = st.bond_code
+     LEFT JOIN sina_stock_info si ON CAST(st.stock_code_no_suffix AS CHAR) = CAST(si.stock_code AS CHAR)
      WHERE s.trade_date = ?
      ORDER BY s.amount DESC`,
     [latestDate]
@@ -181,12 +187,31 @@ async function getOversold() {
   return getStrategyBonds('daily')
 }
 
+async function getBondHistory(code) {
+  const [rows] = await pool.query(
+    `SELECT trade_date, \`close\`
+     FROM bond_kline
+     WHERE SUBSTRING(symbol, 3) = ?
+     ORDER BY trade_date DESC
+     LIMIT 60`,
+    [code]
+  )
+  return rows.reverse().map(r => ({
+    date: r.trade_date instanceof Date
+      ? r.trade_date.toISOString().slice(0, 10)
+      : String(r.trade_date).slice(0, 10),
+    price: parseFloat(r.close) || 0,
+    premium: 0,
+  }))
+}
+
 async function getStrategyBonds(strategyType) {
   const latestDate = await queryLatestDate('daily_strategy')
   if (!latestDate) return []
 
   const [rows] = await pool.query(
     `SELECT bond_code, bond_name, price, change_pct, industry,
+            industry_level1, industry_level2, industry_level3,
             remain_scale, maturity_date, cci, wr, is_oversold, amount_yi
      FROM daily_strategy
      WHERE trade_date = ? AND strategy_type = ?
@@ -201,6 +226,9 @@ async function getStrategyBonds(strategyType) {
     change_percent: parseFloat(r.change_pct) || 0,
     is_oversold: r.is_oversold === 1,
     industry: r.industry || '',
+    industry_level1: r.industry_level1 || '',
+    industry_level2: r.industry_level2 || '',
+    industry_level3: r.industry_level3 || '',
     remain_scale: parseFloat(r.remain_scale) || 0,
     maturity_date: r.maturity_date || '',
     cci: r.cci !== null ? parseFloat(r.cci) : 0,
@@ -262,6 +290,20 @@ exports.main = async function (event) {
 
       case '/api/strategy-volume': {
         const data = await getStrategyBonds('volume')
+        return successResponse({ success: true, data }, corsHeaders)
+      }
+
+      case '/api/bond-history': {
+        const code = queryStringParameters?.code
+        if (!code) {
+          return {
+            isBase64Encoded: false,
+            statusCode: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' },
+            body: JSON.stringify({ error: 'Bad Request', message: '缺少 code 参数' }),
+          }
+        }
+        const data = await getBondHistory(code)
         return successResponse({ success: true, data }, corsHeaders)
       }
 

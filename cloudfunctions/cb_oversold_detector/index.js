@@ -64,11 +64,23 @@ async function getBondList() {
         SELECT
           bl.bond_code,
           bl.bond_name,
-          COALESCE(bs.industry_level1, '') AS industry,
+          COALESCE(
+            JSON_UNQUOTE(JSON_EXTRACT(si.industry, '$[0]."名称"')),
+            ''
+          ) AS industry_level1,
+          COALESCE(
+            JSON_UNQUOTE(JSON_EXTRACT(si.industry, '$[1]."名称"')),
+            ''
+          ) AS industry_level2,
+          COALESCE(
+            JSON_UNQUOTE(JSON_EXTRACT(si.industry, '$[2]."名称"')),
+            ''
+          ) AS industry_level3,
           COALESCE(bs.latest_amount, 0) AS latest_amount,
           COALESCE(bs.maturity_date, '') AS maturity_date
         FROM bond_list bl
         LEFT JOIN bond_static bs ON bl.bond_code = bs.bond_code
+        LEFT JOIN sina_stock_info si ON CAST(bs.stock_code_no_suffix AS CHAR) = CAST(si.stock_code AS CHAR)
         WHERE bl.is_active = 1
         ORDER BY bl.bond_code
       `);
@@ -342,7 +354,10 @@ function detectOversold(bonds, klineByBond) {
         allResults.push({
           bond_code: bond.bond_code,
           bond_name: bond.bond_name,
-          industry: bond.industry,
+          industry: bond.industry_level1 || '',
+          industry_level1: bond.industry_level1 || '',
+          industry_level2: bond.industry_level2 || '',
+          industry_level3: bond.industry_level3 || '',
           latest_amount: bond.latest_amount,
           maturity_date: bond.maturity_date,
           price: '',
@@ -361,7 +376,10 @@ function detectOversold(bonds, klineByBond) {
         allResults.push({
           bond_code: bond.bond_code,
           bond_name: bond.bond_name,
-          industry: bond.industry,
+          industry: bond.industry_level1 || '',
+          industry_level1: bond.industry_level1 || '',
+          industry_level2: bond.industry_level2 || '',
+          industry_level3: bond.industry_level3 || '',
           latest_amount: bond.latest_amount,
           maturity_date: bond.maturity_date,
           price: '',
@@ -379,7 +397,10 @@ function detectOversold(bonds, klineByBond) {
       const result = {
         bond_code: bond.bond_code,
         bond_name: bond.bond_name,
-        industry: bond.industry,
+        industry: bond.industry_level1 || '',
+        industry_level1: bond.industry_level1 || '',
+        industry_level2: bond.industry_level2 || '',
+        industry_level3: bond.industry_level3 || '',
         latest_amount: bond.latest_amount,
         maturity_date: bond.maturity_date,
         price,
@@ -406,7 +427,10 @@ function detectOversold(bonds, klineByBond) {
       allResults.push({
         bond_code: bond.bond_code,
         bond_name: bond.bond_name,
-        industry: bond.industry,
+        industry: bond.industry_level1 || '',
+        industry_level1: bond.industry_level1 || '',
+        industry_level2: bond.industry_level2 || '',
+        industry_level3: bond.industry_level3 || '',
         latest_amount: bond.latest_amount,
         maturity_date: bond.maturity_date,
         price: '',
@@ -453,14 +477,25 @@ async function saveStrategyResults(results, tradeDate) {
   if (!results || results.length === 0) return;
 
   let conn;
-  try {
-    conn = await mysql.createConnection(DB_CONFIG);
+    try {
+      conn = await mysql.createConnection(DB_CONFIG);
 
-    const batchSize = 100;
-    for (let i = 0; i < results.length; i += batchSize) {
-      const batch = results.slice(i, i + batchSize);
+      // 从 bond_snapshot 获取最新交易日的涨跌幅
+      const [snapRows] = await conn.query(
+        `SELECT bond_code, change_pct FROM bond_snapshot WHERE trade_date = ?`,
+        [tradeDate]
+      );
+      const changePctMap = {};
+      for (const row of snapRows) {
+        changePctMap[row.bond_code] = row.change_pct;
+      }
+      console.log(`Loaded ${Object.keys(changePctMap).length} change_pct records from bond_snapshot`);
 
-      const placeholders = batch.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())').join(',\n');
+      const batchSize = 100;
+      for (let i = 0; i < results.length; i += batchSize) {
+        const batch = results.slice(i, i + batchSize);
+
+      const placeholders = batch.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())').join(',\n');
       const values = [];
       for (const r of batch) {
         values.push(tradeDate);
@@ -468,8 +503,11 @@ async function saveStrategyResults(results, tradeDate) {
         values.push(r.bond_code);
         values.push(r.bond_name || '');
         values.push(r.price ? parseFloat(r.price) : 0);
-        values.push(null); // change_pct not available
+        values.push(changePctMap[r.bond_code] != null ? parseFloat(changePctMap[r.bond_code]) : null);
         values.push(r.industry || '');
+        values.push(r.industry_level1 || '');
+        values.push(r.industry_level2 || '');
+        values.push(r.industry_level3 || '');
         values.push(r.latest_amount ? parseFloat(r.latest_amount) : 0);
         values.push(r.maturity_date || '');
         values.push(r.cci);
@@ -478,13 +516,16 @@ async function saveStrategyResults(results, tradeDate) {
       }
 
       const sql = `INSERT INTO daily_strategy
-        (trade_date, strategy_type, bond_code, bond_name, price, change_pct, industry, remain_scale, maturity_date, cci, wr, is_oversold, created_at, updated_at)
+        (trade_date, strategy_type, bond_code, bond_name, price, change_pct, industry, industry_level1, industry_level2, industry_level3, remain_scale, maturity_date, cci, wr, is_oversold, created_at, updated_at)
         VALUES ${placeholders}
         ON DUPLICATE KEY UPDATE
           bond_name = VALUES(bond_name),
           price = VALUES(price),
           change_pct = VALUES(change_pct),
           industry = VALUES(industry),
+          industry_level1 = VALUES(industry_level1),
+          industry_level2 = VALUES(industry_level2),
+          industry_level3 = VALUES(industry_level3),
           remain_scale = VALUES(remain_scale),
           maturity_date = VALUES(maturity_date),
           cci = VALUES(cci),

@@ -33,14 +33,18 @@ FILTER_SQL = """
 SELECT
     s.bond_code,
     s.bond_name,
-    COALESCE(st.industry_all, '') AS industry,
+    COALESCE(JSON_UNQUOTE(JSON_EXTRACT(si.industry, '$[0]."名称"')), s.industry1, '') AS industry,
+    COALESCE(JSON_UNQUOTE(JSON_EXTRACT(si.industry, '$[1]."名称"')), '') AS industry_level2,
+    COALESCE(JSON_UNQUOTE(JSON_EXTRACT(si.industry, '$[2]."名称"')), '') AS industry_level3,
     COALESCE(st.maturity_date, '') AS maturity_date,
     COALESCE(st.latest_amount, 0) AS latest_amount,
     s.price,
+    s.change_pct,
     s.amount,
     s.amount / 100000000 AS amount_yi
 FROM bond_snapshot s
 LEFT JOIN bond_static st ON s.bond_code = st.bond_code
+LEFT JOIN sina_stock_info si ON CAST(st.stock_code_no_suffix AS CHAR) = CAST(si.stock_code AS CHAR)
 JOIN (
     SELECT bond_code, AVG(amount) AS avg_amount_5d
     FROM bond_snapshot
@@ -83,11 +87,14 @@ def filter_volume_anomalies(conn, today):
         results.append({
             'bond_code': row[0],
             'bond_name': row[1],
-            'industry': str(row[2] or '未知'),
-            'maturity_date': str(row[3]) if row[3] else '未知',
-            'remaining_scale': float(row[4]) if row[4] else 0,
-            'price': float(row[5]) if row[5] else 0,
-            'amount_yi': round(float(row[7]), 4) if row[7] else 0
+            'industry': str(row[2] or ''),
+            'industry_level2': str(row[3] or ''),
+            'industry_level3': str(row[4] or ''),
+            'maturity_date': str(row[5]) if row[5] else '',
+            'remaining_scale': float(row[6]) if row[6] else 0,
+            'price': float(row[7]) if row[7] else 0,
+            'change_pct': float(row[8]) if row[8] else None,
+            'amount_yi': round(float(row[10]), 4) if row[10] else 0
         })
 
     return results
@@ -107,8 +114,8 @@ def format_feishu_card(results, today_str):
             scale_str = f"{r['remaining_scale']:.2f}亿"
             price_str = f"{r['price']:.2f}"
             amount_str = f"{r['amount_yi']:.4f}亿"
-            industry = r['industry'][:15] if r['industry'] else '未知'
-            maturity = r['maturity_date'][:10] if r['maturity_date'] != '未知' else '未知'
+            industry = r['industry'][:15] if r['industry'] else ''
+            maturity = r['maturity_date'][:10] if r['maturity_date'] else ''
 
             content += f"**{i}. {r['bond_name']}**（{r['bond_code']}）\n"
             content += f"   • 行业：{industry}\n"
@@ -159,12 +166,16 @@ def save_to_strategy_table(conn, results, today_str):
     cur = conn.cursor()
     insert_sql = """
         INSERT INTO daily_strategy
-            (trade_date, strategy_type, bond_code, bond_name, price, change_pct, industry, remain_scale, maturity_date, cci, wr, is_oversold, amount_yi, created_at, updated_at)
-        VALUES (%s, 'volume', %s, %s, %s, NULL, %s, %s, %s, NULL, NULL, 0, %s, NOW(), NOW())
+            (trade_date, strategy_type, bond_code, bond_name, price, change_pct, industry, industry_level1, industry_level2, industry_level3, remain_scale, maturity_date, cci, wr, is_oversold, amount_yi, created_at, updated_at)
+        VALUES (%s, 'volume', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NULL, NULL, 0, %s, NOW(), NOW())
         ON DUPLICATE KEY UPDATE
             bond_name = VALUES(bond_name),
             price = VALUES(price),
+            change_pct = VALUES(change_pct),
             industry = VALUES(industry),
+            industry_level1 = VALUES(industry_level1),
+            industry_level2 = VALUES(industry_level2),
+            industry_level3 = VALUES(industry_level3),
             remain_scale = VALUES(remain_scale),
             maturity_date = VALUES(maturity_date),
             amount_yi = VALUES(amount_yi),
@@ -177,7 +188,11 @@ def save_to_strategy_table(conn, results, today_str):
                 r['bond_code'],
                 r['bond_name'],
                 r['price'],
+                r['change_pct'],
                 r['industry'],
+                r['industry'],
+                r['industry_level2'],
+                r['industry_level3'],
                 r['remaining_scale'],
                 r['maturity_date'],
                 r['amount_yi']

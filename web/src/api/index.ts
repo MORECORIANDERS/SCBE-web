@@ -59,6 +59,9 @@ export interface OversoldBond {
   change_percent: number
   is_oversold: boolean
   industry: string
+  industry_level1: string
+  industry_level2: string
+  industry_level3: string
   remain_scale: number
   maturity_date: string
   cci: number

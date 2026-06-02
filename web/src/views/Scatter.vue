@@ -53,7 +53,7 @@ watch(activeTab, () => {
 })
 
 const industryOptions = computed(() => {
-  const set = new Set(rawData.value.map(d => d.industry))
+  const set = new Set(rawData.value.map(d => d.industry_level1))
   return Array.from(set).sort().map(v => ({ value: v, label: v }))
 })
 
@@ -64,7 +64,7 @@ const filteredData = computed(() => {
     list = list.filter(d => d.bond_name.toLowerCase().includes(q) || d.bond_code.toLowerCase().includes(q))
   }
   if (filterIndustry.value) {
-    list = list.filter(d => d.industry === filterIndustry.value)
+    list = list.filter(d => d.industry_level1 === filterIndustry.value)
   }
   if (activeTab.value !== 'volume' && filterOversold.value === 'yes') {
     list = list.filter(d => d.is_oversold)
@@ -90,15 +90,18 @@ const columns = computed(() => {
       title: '转债名称',
       dataIndex: 'bond_name',
       key: 'bond_name',
-      fixed: 'left' as const,
-      width: 100,
+      align: 'center' as const,
+      width: 70,
     },
     {
       title: '价格',
       dataIndex: 'price',
       key: 'price',
       align: 'center' as const,
-      width: 70,
+      width: 80,
+      customRender: ({ text }: { text: number }) => {
+        return h('span', {}, (text || 0).toFixed(3))
+      },
     },
     {
       title: '涨跌幅',
@@ -108,15 +111,30 @@ const columns = computed(() => {
       width: 80,
       sorter: (a: OversoldBond, b: OversoldBond) => a.change_percent - b.change_percent,
       customRender: ({ text }: { text: number }) => {
-        const color = text >= 0 ? '#ff4d4f' : '#52c41a'
-        const prefix = text >= 0 ? '+' : ''
-        return h('span', { style: { color, fontWeight: 500 } }, `${prefix}${text.toFixed(2)}%`)
+        const val = text ?? 0
+        const color = val >= 0 ? '#ff4d4f' : '#52c41a'
+        const prefix = val >= 0 ? '+' : ''
+        return h('span', { style: { color, fontWeight: 500 } }, `${prefix}${val.toFixed(2)}%`)
       },
     },
     {
-      title: '行业',
-      dataIndex: 'industry',
-      key: 'industry',
+      title: '行业一级',
+      dataIndex: 'industry_level1',
+      key: 'industry_level1',
+      align: 'center' as const,
+      width: 80,
+    },
+    {
+      title: '行业二级',
+      dataIndex: 'industry_level2',
+      key: 'industry_level2',
+      align: 'center' as const,
+      width: 80,
+    },
+    {
+      title: '行业三级',
+      dataIndex: 'industry_level3',
+      key: 'industry_level3',
       align: 'center' as const,
       width: 80,
     },
@@ -128,7 +146,7 @@ const columns = computed(() => {
       width: 80,
       sorter: (a: OversoldBond, b: OversoldBond) => a.remain_scale - b.remain_scale,
       customRender: ({ text }: { text: number }) => {
-        return h('span', {}, `${text.toFixed(2)}亿`)
+        return h('span', {}, (text || 0).toFixed(2))
       },
     },
     {
@@ -141,7 +159,7 @@ const columns = computed(() => {
   ]
 
   if (isOversoldColumns()) {
-    common.push(
+    common.splice(3, 0,
       {
         title: '超卖',
         dataIndex: 'is_oversold',
@@ -160,7 +178,7 @@ const columns = computed(() => {
         width: 80,
         sorter: (a: OversoldBond, b: OversoldBond) => a.cci - b.cci,
         customRender: ({ text }: { text: number }) => {
-          return h(Tag, { color: text < -100 ? 'red' : 'default' }, () => text.toFixed(2))
+          return h(Tag, { color: text < -100 ? 'red' : 'default' }, () => (text ?? 0).toFixed(2))
         },
       },
       {
@@ -171,7 +189,7 @@ const columns = computed(() => {
         width: 80,
         sorter: (a: OversoldBond, b: OversoldBond) => a.wr - b.wr,
         customRender: ({ text }: { text: number }) => {
-          return h(Tag, { color: text > 80 ? 'red' : 'default' }, () => text.toFixed(2))
+          return h(Tag, { color: text > 80 ? 'red' : 'default' }, () => (text ?? 0).toFixed(2))
         },
       }
     )
@@ -184,7 +202,7 @@ const columns = computed(() => {
       width: 100,
       sorter: (a: OversoldBond, b: OversoldBond) => a.amount_yi - b.amount_yi,
       customRender: ({ text }: { text: number }) => {
-        return h('span', { style: { fontWeight: 500 } }, text.toFixed(4))
+        return h('span', { style: { fontWeight: 500 } }, (text ?? 0).toFixed(4))
       },
     })
   }
@@ -236,6 +254,8 @@ const columns = computed(() => {
               <Select.Option value="yes">是</Select.Option>
               <Select.Option value="no">否</Select.Option>
             </Select>
+          </div>
+          <div class="filter-bar" style="margin-top: 6px">
             <span class="filter-label">剩余规模</span>
             <InputNumber
               v-model:value="filterScaleMin"
@@ -263,9 +283,9 @@ const columns = computed(() => {
               <a-table
                 :columns="columns"
                 :data-source="filteredData"
-                :pagination="{ pageSize: 20 }"
+                :pagination="false"
                 :row-key="(record: OversoldBond) => record.bond_code"
-                :scroll="{ x: 'max-content' }"
+                :scroll="{ y: 600, x: 'max-content' }"
                 size="small"
                 bordered
               />
