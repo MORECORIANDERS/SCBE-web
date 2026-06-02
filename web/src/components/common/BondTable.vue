@@ -37,14 +37,14 @@ const columns = [
     dataIndex: 'name',
     key: 'name',
     fixed: 'left',
-    width: 100,
-    minWidth: 80
+    width: 70
   },
   {
     title: '转债价格',
     dataIndex: 'price',
     key: 'price',
     width: 80,
+    align: 'right',
     sorter: (a: BondData, b: BondData) => a.price - b.price
   },
   {
@@ -52,6 +52,7 @@ const columns = [
     dataIndex: 'changePercent',
     key: 'changePercent',
     width: 80,
+    align: 'right',
     sorter: (a: BondData, b: BondData) => a.changePercent - b.changePercent,
     defaultSortOrder: 'descend'
   },
@@ -66,6 +67,7 @@ const columns = [
     title: '剩余规模',
     dataIndex: 'remainSize',
     key: 'remainSize',
+    align: 'right',
     width: 90,
     sorter: (a: BondData, b: BondData) => a.remainSize - b.remainSize
   },
@@ -142,6 +144,12 @@ const amountBarWidth = (amount: number) => {
             <span class="amount-bar-label">{{ formatNumber((record as BondData).amount, 2) }}</span>
           </div>
         </template>
+        <template v-else-if="column.key === 'price'">
+          <span>{{ formatNumber((record as BondData).price, 3) }}</span>
+        </template>
+        <template v-else-if="column.key === 'remainSize'">
+          <span>{{ formatNumber((record as BondData).remainSize, 2) }}</span>
+        </template>
         <template v-else>
           <span>{{ (record as any)[column.key] }}</span>
         </template>
@@ -156,6 +164,15 @@ const amountBarWidth = (amount: number) => {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-medium);
   overflow: hidden;
+}
+
+.bond-table-wrapper :deep(.ant-table-thead > tr > th),
+.bond-table-wrapper :deep(.ant-table-tbody > tr > td) {
+  padding: 6px 8px;
+}
+
+.bond-table-wrapper :deep(.ant-table-tbody > tr > td) {
+  font-family: Consolas, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', sans-serif;
 }
 
 .bond-name-cell {

@@ -9,7 +9,6 @@ const props = defineProps<{
   flatValues: number[]
   totalValues: number[]
   amountSumValues: number[]
-  amountMedianValues: number[]
   selectedCategory?: string | null
 }>()
 
@@ -44,19 +43,17 @@ const initChart = () => {
         const down = props.downValues[idx]
         const flat = props.flatValues[idx]
         const amountSum = props.amountSumValues[idx]
-        const amountMedian = props.amountMedianValues[idx]
         return `${props.categories[idx]}<br/>
           <span style="color:#cf222e">●</span> 上涨: <strong>${up}</strong><br/>
           <span style="color:#1a7f37">●</span> 下跌: <strong>${down}</strong><br/>
           <span style="color:#656d76">●</span> 持平: <strong>${flat}</strong><br/>
           <strong>合计: ${total}</strong><br/>
-          <span style="color:#e16f24">━</span> 成交额: <strong>${amountSum}亿</strong><br/>
-          <span style="color:#8250df">┅</span> 成交额中位数: <strong>${amountMedian}亿</strong>`
+          <span style="color:#e16f24">━</span> 成交额: <strong>${amountSum}亿</strong>`
       }
     },
     legend: {
-      data: ['下跌', '持平', '上涨', '成交额', '成交额中位数'],
-      bottom: 0,
+      data: ['下跌', '持平', '上涨', '成交额'],
+      top: 0,
       left: 'center',
       icon: 'roundRect',
       itemWidth: 12,
@@ -66,8 +63,8 @@ const initChart = () => {
     grid: {
       left: '3%',
       right: '5%',
-      bottom: '22%',
-      top: '3%',
+      bottom: '8%',
+      top: '18%',
       containLabel: true
     },
     xAxis: {
@@ -166,18 +163,6 @@ const initChart = () => {
         smooth: true,
         animation: false
       },
-      {
-        name: '成交额中位数',
-        type: 'line',
-        yAxisIndex: 1,
-        data: props.amountMedianValues,
-        symbol: 'diamond',
-        symbolSize: 6,
-        lineStyle: { color: '#8250df', width: 2, type: 'dashed' },
-        itemStyle: { color: '#8250df' },
-        smooth: true,
-        animation: false
-      }
     ]
   }
 
@@ -204,7 +189,7 @@ onUnmounted(() => {
 })
 
 watch(
-  () => [props.categories, props.upValues, props.downValues, props.flatValues, props.totalValues, props.amountSumValues, props.amountMedianValues, props.selectedCategory],
+  () => [props.categories, props.upValues, props.downValues, props.flatValues, props.totalValues, props.amountSumValues, props.selectedCategory],
   () => initChart(),
   { deep: true }
 )

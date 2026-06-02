@@ -32,7 +32,7 @@ const priceMedian = ref(0)
 const changeMedian = ref(0)
 const volumeMedian = ref(0)
 
-const RISE_FALL_CATEGORIES = ['跌停', '<-7%', '-7~-5%', '-5~-3%', '-3~0%', '0', '0~3%', '3~5%', '5~7%', '>7%', '涨停']
+const RISE_FALL_CATEGORIES = ['涨停', '>7%', '5~7%', '3~5%', '0~3%', '0', '-3~0%', '-5~-3%', '-7~-5%', '<-7%', '跌停']
 
 function getChangeCategory(changePct: number): string {
   if (changePct >= 19.8) return '涨停'
@@ -63,10 +63,14 @@ const riseFallData = computed(() => {
 
 const volumeDistributionData = computed(() => {
   const ranges = [
-    { label: '<1亿', max: 1 },
-    { label: '1~5亿', max: 5 },
-    { label: '5~10亿', max: 10 },
-    { label: '10~50亿', max: 50 },
+    { label: '<0.5亿', max: 0.5 },
+    { label: '0.5-1亿', max: 1 },
+    { label: '1-2亿', max: 2 },
+    { label: '2-4亿', max: 4 },
+    { label: '4-6亿', max: 6 },
+    { label: '6-8亿', max: 8 },
+    { label: '8-10亿', max: 10 },
+    { label: '10-50亿', max: 50 },
     { label: '50亿+', max: Infinity },
   ]
   const counts = ranges.map(() => 0)
@@ -102,12 +106,6 @@ const priceDistributionData = computed(() => {
     amounts[idx].push(bond.amount)
   }
   const amountSumValues = amounts.map(arr => +arr.reduce((s, v) => s + v, 0).toFixed(2))
-  const amountMedianValues = amounts.map(arr => {
-    if (arr.length === 0) return 0
-    const sorted = [...arr].sort((a, b) => a - b)
-    const mid = Math.floor(sorted.length / 2)
-    return +sorted[mid].toFixed(2)
-  })
   return {
     categories: ranges.map(r => r.label),
     upValues: upCounts,
@@ -115,7 +113,6 @@ const priceDistributionData = computed(() => {
     flatValues: flatCounts,
     totalValues: upCounts.map((_, i) => upCounts[i] + downCounts[i] + flatCounts[i]),
     amountSumValues,
-    amountMedianValues,
   }
 })
 
@@ -137,10 +134,14 @@ function getPriceRange(price: number): string {
 }
 
 function getVolumeRange(amount: number): string {
-  if (amount < 1) return '<1亿'
-  if (amount < 5) return '1~5亿'
-  if (amount < 10) return '5~10亿'
-  if (amount < 50) return '10~50亿'
+  if (amount < 0.5) return '<0.5亿'
+  if (amount < 1) return '0.5-1亿'
+  if (amount < 2) return '1-2亿'
+  if (amount < 4) return '2-4亿'
+  if (amount < 6) return '4-6亿'
+  if (amount < 8) return '6-8亿'
+  if (amount < 10) return '8-10亿'
+  if (amount < 50) return '10-50亿'
   return '50亿+'
 }
 
@@ -369,7 +370,6 @@ onMounted(() => {
               :flat-values="priceDistributionData.flatValues"
               :total-values="priceDistributionData.totalValues"
               :amount-sum-values="priceDistributionData.amountSumValues"
-              :amount-median-values="priceDistributionData.amountMedianValues"
               :selected-category="selectedPriceRange"
               @bar-click="handlePriceBarClick($event)"
             />
@@ -520,6 +520,10 @@ onMounted(() => {
   text-align: center;
 }
 
+.metric-card-volume .metric-card-body {
+  text-align: center;
+}
+
 .metric-card-title {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
@@ -549,7 +553,7 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   gap: 2px;
-  font-size: 50px;
+  font-size: 60px;
   font-weight: var(--font-weight-semibold);
   line-height: 1;
 }
@@ -609,7 +613,7 @@ onMounted(() => {
   }
 
   .risefall-stats {
-    font-size: var(--font-size-sm);
+    font-size: 20px;
   }
 }
 </style>
